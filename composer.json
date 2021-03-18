@@ -1,0 +1,27 @@
+{
+    "name": "kellerkinder/twig-cs-fixer",
+    "description": "TODO",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "a.wink",
+            "email": "a.wink@kellerkinder.de"
+        }
+    ],
+    "require": {
+        "php": "^7.3",
+        "friendsoftwig/twigcs": "^5.0",
+        "symfony/dependency-injection": "^5.2",
+        "symfony/config": "^5.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kellerkinder\\TwigCsFixer\\": "src"
+        }
+    },
+    "require-dev": {
+        "symfony/var-dumper": "^5.2",
+        "k10r/codestyle": "^1.0"
+    }
+}

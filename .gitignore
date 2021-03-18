@@ -1,0 +1,8 @@
+#IDE
+/.idea
+
+#Cache
+/.php_cs.cache
+
+#dependencies
+/vendor
