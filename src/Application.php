@@ -26,10 +26,20 @@ class Application extends BaseApplication
         $this->setCompiledContainer();
 
         try {
+            /** @var null|FixCommand $fixCommand */
             $fixCommand = $this->container->get(FixCommand::class);
 
+            if ($fixCommand === null) {
+                return;
+            }
+            $commandName = $fixCommand->getName();
+
+            if (empty($commandName)) {
+                return;
+            }
+
             $this->add($fixCommand);
-            $this->setDefaultCommand($fixCommand->getName(), $singleCommand);
+            $this->setDefaultCommand($commandName, $singleCommand);
         } catch (Throwable $t) {
             dd($t);
         }

@@ -15,13 +15,18 @@
         "symfony/dependency-injection": "^5.2",
         "symfony/config": "^5.2"
     },
+    "require-dev": {
+        "symfony/var-dumper": "^5.2",
+        "k10r/codestyle": "^1.0",
+        "phpstan/phpstan": "^0.12.82"
+    },
     "autoload": {
         "psr-4": {
             "Kellerkinder\\TwigCsFixer\\": "src"
         }
     },
-    "require-dev": {
-        "symfony/var-dumper": "^5.2",
-        "k10r/codestyle": "^1.0"
+    "scripts": {
+        "phpcs": "./vendor/bin/php-cs-fixer fix",
+        "phpstan": "./vendor/bin/phpstan analyse"
     }
 }

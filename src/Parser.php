@@ -8,11 +8,9 @@ class Parser
 {
     public function parseFile(File $file): void
     {
-        $content = $file->getContent();
+        $partedLines = explode(PHP_EOL, $file->getContent());
 
-        $partedLines = explode(PHP_EOL, $content);
-
-        if (!$partedLines || empty($partedLines)) {
+        if (empty($partedLines)) {
             return;
         }
 
@@ -22,9 +20,23 @@ class Parser
 
     protected function parseDirectives(File $file): void
     {
+        $this->parseLines($file);
         $this->parseHtml($file);
         $this->parseAccolades($file);
         $this->parseStatements($file);
+    }
+
+    protected function parseLines(File $file): void
+    {
+        $partedLines = $file->getPartedLines();
+
+        foreach ($partedLines as $partedLine) {
+            $match = $this->getDataForMatch($partedLine, $partedLines);
+
+            if ($match !== null) {
+                $file->addMatch($match);
+            }
+        }
     }
 
     protected function parseHtml(File $file): void
@@ -89,9 +101,8 @@ class Parser
 
     private function getDataForMatch(string $match, array $partedLines): ?Match
     {
-        $line   = 0;
-        $column = 0;
-
+        $line       = 0;
+        $column     = 0;
         $isInScript = false;
 
         foreach ($partedLines as $lineNumber => $partedLine) {

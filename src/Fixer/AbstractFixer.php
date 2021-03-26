@@ -4,28 +4,17 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer\Fixer;
 
-use Kellerkinder\TwigCsFixer\Violations\AbstractViolation;
+use Kellerkinder\TwigCsFixer\Match;
 
 abstract class AbstractFixer
 {
-    abstract public function supports(AbstractViolation $violation): bool;
+    abstract public function fix(Match $match): void;
 
-    abstract public function fix(AbstractViolation $violation): void;
-
-    protected function getFileContent(AbstractViolation $violation): array
+    /**
+     * Check if line only contains twig
+     */
+    protected function isTwigMatch(string $line): bool
     {
-        $fileContent = file_get_contents($violation->getPath());
-
-        if (!$fileContent || empty($fileContent)) {
-            return [];
-        }
-
-        $file = explode(PHP_EOL, $fileContent);
-
-        if (!$file) {
-            return [];
-        }
-
-        return $file;
+        return (bool) preg_match('/^{{.+/', $line) && !preg_match('/^{%.+/', $line);
     }
 }

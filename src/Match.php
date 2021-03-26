@@ -17,8 +17,11 @@ class Match
     /** @var string */
     private $match;
 
+    /** @var string */
+    private $fixedMatch = '';
+
     /** @var AbstractViolation[] */
-    private $violations;
+    private $violations = [];
 
     public function __construct(int $line, int $column, string $match)
     {
@@ -52,9 +55,24 @@ class Match
         return $this->match;
     }
 
+    public function getFixedMatch(): string
+    {
+        return strlen($this->fixedMatch) > 0 ? $this->fixedMatch : $this->match;
+    }
+
+    public function setFixedMatch(string $fixedMatch): void
+    {
+        $this->fixedMatch = $fixedMatch;
+    }
+
     public function getViolations(): array
     {
         return $this->violations;
+    }
+
+    public function hasViolations(): bool
+    {
+        return count($this->getViolations()) > 0;
     }
 
     public function setViolations(array $violations): void

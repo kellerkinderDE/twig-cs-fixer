@@ -9,7 +9,6 @@ use FriendsOfTwig\Twigcs\Container;
 use Kellerkinder\TwigCsFixer\File;
 use Kellerkinder\TwigCsFixer\Fixer\AbstractFixer;
 use Kellerkinder\TwigCsFixer\Parser;
-use Kellerkinder\TwigCsFixer\Validator\AbstractValidator;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
@@ -20,16 +19,12 @@ use Throwable;
 
 class FixCommand extends Command
 {
-    /** @var AbstractValidator|iterable */
-    private $validators;
-
-    /** @var AbstractFixer|iterable */
+    /** @var AbstractFixer[]|iterable */
     private $fixers;
 
-    public function __construct($validators, iterable $fixers)
+    public function __construct(iterable $fixers)
     {
-        $this->validators = $validators;
-        $this->fixers     = $fixers;
+        $this->fixers = $fixers;
 
         parent::__construct();
     }
@@ -41,26 +36,26 @@ class FixCommand extends Command
             ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'The path to scan for twig files.');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): void
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $resolver = new ConfigResolver(new Container(), getcwd(), [
             'path' => $input->getArgument('paths'),
         ]); // TODO: build directly in project
 
-        $files = $this->buildViolations($resolver, $output);
-//        $this->fixViolations($violations, $output); // TODO add handling rto fix violations
+        $files = $this->getFiles($resolver, $output);
+        $this->fixViolations($files, $output); // TODO add handling to fix violations
 
-        dd($files);
+        return 0;
     }
 
-    protected function buildViolations(ConfigResolver $resolver, OutputInterface $output): array
+    protected function getFiles(ConfigResolver $resolver, OutputInterface $output): array
     {
         /** @var Finder[] $finders */
         $finders = $resolver->getFinders();
         $parser  = new Parser();
         $files   = [];
 
-        $output->writeln('Start collecting violations from finder');
+        $output->writeln('Start collecting files');
         foreach ($finders as $finder) {
             $fileIterator = $finder->files();
             $progressBar  = new ProgressBar($output, $fileIterator->count());
@@ -74,15 +69,13 @@ class FixCommand extends Command
                         continue;
                     }
 
-                    $file = new File($file->getFilename(), $realPath, file_get_contents($realPath));
-                    $parser->parseFile($file);
+                    $fileContent = file_get_contents($realPath);
 
-                    /** @var AbstractValidator $validator */
-                    foreach ($this->validators as $validator) {
-                        $validator->validate($file);
+                    if (!empty($fileContent)) {
+                        $file = new File($file->getFilename(), $realPath, $fileContent);
+                        $parser->parseFile($file);
+                        $files[] = $file;
                     }
-
-                    $files[] = $file;
                 } catch (Throwable $e) {
                     dd($e);
                 }
@@ -96,24 +89,29 @@ class FixCommand extends Command
         return $files;
     }
 
-    protected function fixViolations(array $violations, OutputInterface $output): void
+    /** @var File[] $files */
+    protected function fixViolations(array $files, OutputInterface $output): void
     {
         $output->writeln('');
-        $output->writeln('Fix violations from here');
-        $progressBar = new ProgressBar($output, count($violations));
+        $output->writeln('Fix files from here');
+        $progressBar = new ProgressBar($output, count($files));
         $progressBar->start();
-        foreach ($violations as $violation) {
-            /** @var AbstractFixer $fixer */
-            foreach ($this->fixers as $fixer) {
-                if (!$fixer->supports($violation)) {
-                    continue;
+
+        foreach ($files as $file) {
+            $partedLines = $file->getPartedLines();
+
+            foreach ($file->getMatches() as $match) {
+                foreach ($this->fixers as $fixer) {
+                    $fixer->fix($match);
                 }
 
-                $fixer->fix($violation);
+                $partedLines[$match->getLine()] = str_replace($match->getMatch(), $match->getFixedMatch(), $partedLines[$match->getLine()]);
             }
-
             $progressBar->advance();
+
+            file_put_contents($file->getPath(), implode(PHP_EOL, $partedLines));
         }
+
         $progressBar->finish();
     }
 }

@@ -4,43 +4,42 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer\Fixer;
 
-use Kellerkinder\TwigCsFixer\Violations\AbstractViolation;
+use function is_string;
+use Kellerkinder\TwigCsFixer\Match;
 use Kellerkinder\TwigCsFixer\Violations\PipeSuffixSpacingViolation;
-use Kellerkinder\TwigCsFixer\Violations\TrailingSpaceViolation;
 
 class PipeSuffixSpacingFixer extends AbstractFixer
 {
-    public function supports(AbstractViolation $violation): bool
+    public const VIOLATION_REGEX = '/[[:blank:]]+\|/';
+    public const REPLACEMENT     = '|';
+
+    public function fix(Match $match): void
     {
-        return $violation instanceof PipeSuffixSpacingViolation;
-    }
+        if (!$this->isTwigMatch($match->getMatch())) {
+            return;
+        }
 
-    /**
-     * @param TrailingSpaceViolation $violation
-     */
-    public function fix(AbstractViolation $violation): void
-    {
-        $fileContent = [];
+        $line             = $match->getFixedMatch();
+        $violationMatches = [];
+        preg_match_all(self::VIOLATION_REGEX, $line, $violationMatches);
 
-        if (empty($fileContent)) {
-            $fileContent = $this->getFileContent($violation);
+        if (!empty($violationMatches)) {
+            foreach ($violationMatches[0] as $violationMatch) {
+                $column = strpos($match->getFixedMatch(), $violationMatch);
 
-            if (empty($fileContent)) {
-                return;
+                if (!$column) {
+                    return;
+                }
+
+                $fixedMatch     = $match->getFixedMatch();
+                $violatedSubstr = substr($fixedMatch, $column);
+                $fixedSubstr    = preg_replace(self::VIOLATION_REGEX, self::REPLACEMENT, $violatedSubstr, 1);
+
+                if (is_string($fixedSubstr)) {
+                    $match->setFixedMatch(str_replace($violatedSubstr, $fixedSubstr, $fixedMatch));
+                    $match->addViolation(new PipeSuffixSpacingViolation($column));
+                }
             }
-        }
-
-        $violationLine               = $violation->getLine() - 1;
-        $oldLine                     = $fileContent[$violationLine];
-        $fileContent[$violationLine] = preg_replace('/\|[[:blank:]]+$/', '|', $fileContent[$violationLine]);
-
-        if ($oldLine !== $fileContent[$violationLine]) {
-            $violation->setFixed(true);
-        }
-
-        if (!empty($fileContent)) {
-            $file = implode(PHP_EOL, $fileContent);
-            file_put_contents($violation->getPath(), $file);
         }
     }
 }

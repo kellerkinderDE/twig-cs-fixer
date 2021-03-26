@@ -3,12 +3,20 @@
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://symfony.com/schema/dic/services https://symfony.com/schema/dic/services/services-1.0.xsd">
     <services>
-<!--        <service id="Kellerkinder\TwigCsFixer\Fixer\SpaceLineFixer">-->
-<!--            <tag name="twig_cs_fixer.fixer" />-->
-<!--        </service>-->
+        <service id="Kellerkinder\TwigCsFixer\Fixer\PipePrefixSpacingFixer">
+            <tag name="twig_cs_fixer.fixer" />
+        </service>
 
-<!--        <service id="Kellerkinder\TwigCsFixer\Fixer\TrailingSpaceFixer">-->
-<!--            <tag name="twig_cs_fixer.fixer" />-->
-<!--        </service>-->
+        <service id="Kellerkinder\TwigCsFixer\Fixer\PipeSuffixSpacingFixer">
+            <tag name="twig_cs_fixer.fixer" />
+        </service>
+
+        <service id="Kellerkinder\TwigCsFixer\Fixer\SpaceLineFixer">
+            <tag name="twig_cs_fixer.fixer" />
+        </service>
+
+        <service id="Kellerkinder\TwigCsFixer\Fixer\TrailingSpaceFixer">
+            <tag name="twig_cs_fixer.fixer" />
+        </service>
     </services>
 </container>
