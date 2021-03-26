@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Kellerkinder\TwigCsFixer\Fixer;
+namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
 use function is_string;
 use Kellerkinder\TwigCsFixer\Match;
 use Kellerkinder\TwigCsFixer\Violations\PipeSuffixSpacingViolation;
 
-class PipeSuffixSpacingFixer extends AbstractFixer
+class PipePrefixSpacingFixer extends AbstractMatchFixer
 {
-    public const VIOLATION_REGEX = '/[[:blank:]]+\|/';
+    public const VIOLATION_REGEX = '/\|[[:blank:]]+/';
     public const REPLACEMENT     = '|';
 
     public function fix(Match $match): void
@@ -19,13 +19,13 @@ class PipeSuffixSpacingFixer extends AbstractFixer
             return;
         }
 
-        $line             = $match->getFixedMatch();
         $violationMatches = [];
-        preg_match_all(self::VIOLATION_REGEX, $line, $violationMatches);
+        $line             = $match->getMatch();
+        preg_match_all(self::VIOLATION_REGEX, $match->getMatch(), $violationMatches);
 
         if (!empty($violationMatches)) {
             foreach ($violationMatches[0] as $violationMatch) {
-                $column = strpos($match->getFixedMatch(), $violationMatch);
+                $column = strpos($line, $violationMatch);
 
                 if (!$column) {
                     return;

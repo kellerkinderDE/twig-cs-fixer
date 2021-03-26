@@ -19,6 +19,9 @@ class File
     private $partedLines;
 
     /** @var Match[] */
+    private $lines;
+
+    /** @var Match[] */
     private $matches;
 
     /** @var bool */
@@ -62,6 +65,21 @@ class File
     public function setPartedLines(array $partedLines): void
     {
         $this->partedLines = $partedLines;
+    }
+
+    public function getLines(): array
+    {
+        return $this->lines;
+    }
+
+    public function setLines(array $lines): void
+    {
+        $this->lines = $lines;
+    }
+
+    public function addLine(Match $match): void
+    {
+        $this->lines[] = $match;
     }
 
     public function getMatches(): array

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Kellerkinder\TwigCsFixer\Fixer;
+namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
 use Kellerkinder\TwigCsFixer\Match;
 
-abstract class AbstractFixer
+abstract class AbstractMatchFixer
 {
     abstract public function fix(Match $match): void;
 

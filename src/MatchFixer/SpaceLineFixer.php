@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Kellerkinder\TwigCsFixer\Fixer;
+namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
 use Kellerkinder\TwigCsFixer\Match;
 use Kellerkinder\TwigCsFixer\Violations\AbstractViolation;
 use Kellerkinder\TwigCsFixer\Violations\SpaceLineViolation;
 
-class SpaceLineFixer extends AbstractFixer
+class SpaceLineFixer extends AbstractMatchFixer
 {
     private const VIOLATION_REGEX = '/^.{0}[[:blank:]]+$/';
 

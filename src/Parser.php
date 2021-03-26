@@ -34,7 +34,7 @@ class Parser
             $match = $this->getDataForMatch($partedLine, $partedLines);
 
             if ($match !== null) {
-                $file->addMatch($match);
+                $file->addLine($match);
             }
         }
     }

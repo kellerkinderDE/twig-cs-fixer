@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Kellerkinder\TwigCsFixer\Fixer;
+namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
 use Kellerkinder\TwigCsFixer\Match;
 use Kellerkinder\TwigCsFixer\Violations\TrailingSpaceViolation;
 
-class TrailingSpaceFixer extends AbstractFixer
+class TrailingSpaceFixer extends AbstractMatchFixer
 {
     public const VIOLATION_REGEX = '/\S+[[:blank:]]+\Z/';
     public const FIX_REGEX       = '/\S+/';

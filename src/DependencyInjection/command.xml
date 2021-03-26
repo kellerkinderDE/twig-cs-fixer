@@ -6,8 +6,8 @@
         <defaults public="true" />
 
         <service id="Kellerkinder\TwigCsFixer\Command\FixCommand">
-            <argument type="tagged_iterator" tag="twig_cs_fixer.validator" />
-            <argument type="tagged_iterator" tag="twig_cs_fixer.fixer" />
+            <argument type="tagged_iterator" tag="twig_cs_fixer.fixer.match" />
+            <argument type="tagged_iterator" tag="twig_cs_fixer.fixer.file" />
         </service>
     </services>
 </container>

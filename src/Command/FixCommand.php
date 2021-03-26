@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer\Command;
 
+use function count;
 use FriendsOfTwig\Twigcs\Config\ConfigResolver;
 use FriendsOfTwig\Twigcs\Container;
 use Kellerkinder\TwigCsFixer\File;
-use Kellerkinder\TwigCsFixer\Fixer\AbstractFixer;
+use Kellerkinder\TwigCsFixer\FileFixer\AbstractFileFixer;
+use Kellerkinder\TwigCsFixer\MatchFixer\AbstractMatchFixer;
 use Kellerkinder\TwigCsFixer\Parser;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -19,12 +21,16 @@ use Throwable;
 
 class FixCommand extends Command
 {
-    /** @var AbstractFixer[]|iterable */
-    private $fixers;
+    /** @var AbstractMatchFixer[]|iterable */
+    private $matchFixer;
 
-    public function __construct(iterable $fixers)
+    /** @var AbstractFileFixer[]|iterable */
+    private $fileFixer;
+
+    public function __construct(iterable $matchFixer, iterable $fileFixer)
     {
-        $this->fixers = $fixers;
+        $this->matchFixer = $matchFixer;
+        $this->fileFixer  = $fileFixer;
 
         parent::__construct();
     }
@@ -76,8 +82,9 @@ class FixCommand extends Command
                         $parser->parseFile($file);
                         $files[] = $file;
                     }
-                } catch (Throwable $e) {
-                    dd($e);
+                } catch (Throwable $t) {
+                    $progressBar->finish();
+                    $output->writeln(sprintf('ERROR: %s', $t->getMessage()));
                 }
 
                 $progressBar->advance();
@@ -100,18 +107,36 @@ class FixCommand extends Command
         foreach ($files as $file) {
             $partedLines = $file->getPartedLines();
 
-            foreach ($file->getMatches() as $match) {
-                foreach ($this->fixers as $fixer) {
-                    $fixer->fix($match);
-                }
+            $this->fixMatches($file, $partedLines);
+            $this->fixFile($file, $partedLines);
 
-                $partedLines[$match->getLine()] = str_replace($match->getMatch(), $match->getFixedMatch(), $partedLines[$match->getLine()]);
-            }
             $progressBar->advance();
 
             file_put_contents($file->getPath(), implode(PHP_EOL, $partedLines));
         }
 
         $progressBar->finish();
+    }
+
+    protected function fixMatches(File $file, array &$partedLines): void
+    {
+        foreach ($file->getMatches() as $match) {
+            foreach ($this->matchFixer as $fixer) {
+                $fixer->fix($match);
+            }
+            $matchLine = $match->getLine();
+
+            $partedLines[$matchLine] = str_replace($match->getMatch(), $match->getFixedMatch(), $partedLines[$matchLine]);
+        }
+    }
+
+    protected function fixFile(File $file, array &$partedLines): void
+    {
+        foreach ($this->fileFixer as $fixer) {
+            $fixer->fix($file);
+        }
+
+        // TODO: check why file isn't written
+        file_put_contents($file->getPath(), implode(PHP_EOL, $file->getPartedLines()));
     }
 }
