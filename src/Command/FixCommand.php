@@ -132,11 +132,12 @@ class FixCommand extends Command
 
     protected function fixFile(File $file, array &$partedLines): void
     {
+        $file->setPartedLines($partedLines);
+
         foreach ($this->fileFixer as $fixer) {
             $fixer->fix($file);
         }
 
-        // TODO: check why file isn't written
-        file_put_contents($file->getPath(), implode(PHP_EOL, $file->getPartedLines()));
+        $partedLines = $file->getPartedLines();
     }
 }

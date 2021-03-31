@@ -99,14 +99,32 @@ class Parser
         }
     }
 
+    // TODO: fix error where identical lines get the first occurrence as line/column
     private function getDataForMatch(string $match, array $partedLines): ?Match
     {
         $line       = 0;
         $column     = 0;
         $isInScript = false;
+        $emptyLines = 0;
 
         foreach ($partedLines as $lineNumber => $partedLine) {
             $isInScript = $this->ifInScriptTag($partedLine);
+
+            if (empty($partedLine)) {
+                ++$emptyLines;
+                $subEmptyLineCounter = 0;
+                foreach ($partedLines as $subLineNumber => $subLine) {
+                    if (empty($subLine)) {
+                        ++$subEmptyLineCounter;
+
+                        if ($subEmptyLineCounter === $emptyLines) {
+                            $line = $subLineNumber;
+
+                            break;
+                        }
+                    }
+                }
+            }
 
             if (strpos($partedLine, $match) !== false) {
                 $line   = $lineNumber;

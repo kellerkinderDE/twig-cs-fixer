@@ -8,5 +8,5 @@ use Kellerkinder\TwigCsFixer\File;
 
 abstract class AbstractFileFixer
 {
-    abstract public function fix(File $match): void;
+    abstract public function fix(File $file): void;
 }
