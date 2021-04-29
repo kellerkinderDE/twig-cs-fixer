@@ -6,3 +6,9 @@
 
 #dependencies
 /vendor
+
+#project
+/test/files/output/*
+!/test/files/output/.gitkeep
+/twig_cs*
+!/twig_cs.dist

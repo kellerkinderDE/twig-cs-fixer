@@ -1,0 +1,37 @@
+<div class="tmp">
+<p>test</p>
+</div>
+    <div>
+    <abc></abc>
+        <a href="http://test.test.test">
+            <span> abc
+        </span>
+                </a>
+
+        <a
+
+href="http://test.test.test">
+                <span> abc
+                                </span>
+</a>
+        {%
+            if abc.def=1
+        %}
+            {%
+                if abc.def=1 %}
+            {% endif %}
+        {% endif %}
+
+                {% if abc.def=1 %}
+{{ myTextOutput |   raw | trans() }}
+    {% endif %}
+        <a
+class="test{% if myClassIsThere %} foo{% endif %} bar"
+                href="http://test.test.test"
+        >
+                <span> abc
+                                </span>
+        </a>
+</div>
+
+            <myAbc />

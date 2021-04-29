@@ -30,12 +30,10 @@ class Parser
     {
         $partedLines = $file->getPartedLines();
 
-        foreach ($partedLines as $partedLine) {
-            $match = $this->getDataForMatch($partedLine, $partedLines);
+        foreach ($partedLines as $key => $partedLine) {
+            $match = new Match($key, 0, $partedLine);
 
-            if ($match !== null) {
-                $file->addLine($match);
-            }
+            $file->addLine($match);
         }
     }
 

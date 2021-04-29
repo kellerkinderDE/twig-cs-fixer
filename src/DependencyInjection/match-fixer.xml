@@ -11,6 +11,10 @@
             <tag name="twig_cs_fixer.fixer.match" />
         </service>
 
+        <service id="Kellerkinder\TwigCsFixer\MatchFixer\SelfClosingSpacingFixer">
+            <tag name="twig_cs_fixer.fixer.match" />
+        </service>
+
         <service id="Kellerkinder\TwigCsFixer\MatchFixer\SpaceLineFixer">
             <tag name="twig_cs_fixer.fixer.match" />
         </service>

@@ -10,7 +10,7 @@ use Kellerkinder\TwigCsFixer\Violations\PipeSuffixSpacingViolation;
 
 class PipeSuffixSpacingFixer extends AbstractMatchFixer
 {
-    public const VIOLATION_REGEX = '/[[:blank:]]+\|/';
+    public const VIOLATION_REGEX = '/\|[[:blank:]]+/';
     public const REPLACEMENT     = '|';
 
     public function fix(Match $match): void

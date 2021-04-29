@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Kellerkinder\TwigCsFixer\Command;
 
 use function count;
-use FriendsOfTwig\Twigcs\Config\ConfigResolver;
-use FriendsOfTwig\Twigcs\Container;
+use Kellerkinder\TwigCsFixer\Config;
 use Kellerkinder\TwigCsFixer\File;
 use Kellerkinder\TwigCsFixer\FileFixer\AbstractFileFixer;
 use Kellerkinder\TwigCsFixer\MatchFixer\AbstractMatchFixer;
@@ -15,7 +14,9 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Finder\Finder;
 use Throwable;
 
@@ -39,25 +40,33 @@ class FixCommand extends Command
     {
         $this
             ->setName('fix')
+            ->addOption('config', 'c', InputOption::VALUE_REQUIRED, 'The path to the config file.')
             ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'The path to scan for twig files.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $resolver = new ConfigResolver(new Container(), getcwd(), [
-            'path' => $input->getArgument('paths'),
-        ]); // TODO: build directly in project
+        $configPath        = $input->getOption('config');
+        $configIncludePath = getcwd() . '/' . $configPath;
 
-        $files = $this->getFiles($resolver, $output);
-        $this->fixViolations($files, $output); // TODO add handling to fix violations
+        // TODO: add handling for default paths
+        if (file_exists($configIncludePath)) {
+            $config = require $configIncludePath;
+        } else {
+            // TODO: switch to default config
+            throw new FileNotFoundException(sprintf('File "%s" could not be found.', $configPath));
+        }
+
+        $files = $this->getFiles($config, $output);
+        $this->fixViolations($config, $files, $output);
 
         return 0;
     }
 
-    protected function getFiles(ConfigResolver $resolver, OutputInterface $output): array
+    protected function getFiles(Config $config, OutputInterface $output): array
     {
         /** @var Finder[] $finders */
-        $finders = $resolver->getFinders();
+        $finders = $config->getFinders();
         $parser  = new Parser();
         $files   = [];
 
@@ -97,7 +106,7 @@ class FixCommand extends Command
     }
 
     /** @var File[] $files */
-    protected function fixViolations(array $files, OutputInterface $output): void
+    protected function fixViolations(Config $config, array $files, OutputInterface $output): void
     {
         $output->writeln('');
         $output->writeln('Fix files from here');
@@ -105,39 +114,47 @@ class FixCommand extends Command
         $progressBar->start();
 
         foreach ($files as $file) {
-            $partedLines = $file->getPartedLines();
-
-            $this->fixMatches($file, $partedLines);
-            $this->fixFile($file, $partedLines);
+            $this->fixMatches($config, $file);
+            $this->fixFile($config, $file);
 
             $progressBar->advance();
+            $path = $file->getPath();
 
-            file_put_contents($file->getPath(), implode(PHP_EOL, $partedLines));
+            if ($config->isProjectTest()) {
+                $path = dirname($file->getPath()) . '/output/' . $file->getName();
+            }
+
+            file_put_contents($path, implode(PHP_EOL, $file->getPartedLines()));
         }
 
         $progressBar->finish();
     }
 
-    protected function fixMatches(File $file, array &$partedLines): void
+    protected function fixMatches(Config $config, File $file): void
     {
         foreach ($file->getMatches() as $match) {
             foreach ($this->matchFixer as $fixer) {
                 $fixer->fix($match);
             }
-            $matchLine = $match->getLine();
 
-            $partedLines[$matchLine] = str_replace($match->getMatch(), $match->getFixedMatch(), $partedLines[$matchLine]);
+            foreach ($config->getCustomMatchFixer() as $fixer) {
+                $fixer->fix($match);
+            }
+
+            $matchLine  = $match->getLine();
+            $partedLine = $file->getPartedLine($matchLine);
+            $file->setPartedLine($matchLine, str_replace($match->getMatch(), $match->getFixedMatch(), $partedLine));
         }
     }
 
-    protected function fixFile(File $file, array &$partedLines): void
+    protected function fixFile(Config $config, File $file): void
     {
-        $file->setPartedLines($partedLines);
-
         foreach ($this->fileFixer as $fixer) {
             $fixer->fix($file);
         }
 
-        $partedLines = $file->getPartedLines();
+        foreach ($config->getCustomFileFixer() as $fixer) {
+            $fixer->fix($file);
+        }
     }
 }

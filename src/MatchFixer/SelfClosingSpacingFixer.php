@@ -6,16 +6,16 @@ namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
 use function is_string;
 use Kellerkinder\TwigCsFixer\Match;
-use Kellerkinder\TwigCsFixer\Violations\PipeSuffixSpacingViolation;
+use Kellerkinder\TwigCsFixer\Violations\SelfClosingSpacingViolation;
 
-class PipePrefixSpacingFixer extends AbstractMatchFixer
+class SelfClosingSpacingFixer extends AbstractMatchFixer
 {
-    public const VIOLATION_REGEX = '/[[:blank:]]+\|/';
-    public const REPLACEMENT     = '|';
+    public const VIOLATION_REGEX = '/[[:blank:]]*\/+/';
+    public const REPLACEMENT     = '/';
 
     public function fix(Match $match): void
     {
-        if (!$this->isTwigMatch($match->getMatch())) {
+        if ($this->isTwigMatch($match->getMatch())) {
             return;
         }
 
@@ -37,7 +37,7 @@ class PipePrefixSpacingFixer extends AbstractMatchFixer
 
                 if (is_string($fixedSubstr)) {
                     $match->setFixedMatch(str_replace($violatedSubstr, $fixedSubstr, $fixedMatch));
-                    $match->addViolation(new PipeSuffixSpacingViolation($column));
+                    $match->addViolation(new SelfClosingSpacingViolation($column));
                 }
             }
         }
