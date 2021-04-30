@@ -8,4 +8,8 @@
         <import resource="match-fixer.xml"/>
         <import resource="validator.xml"/>
     </imports>
+
+    <services>
+        <service id="Kellerkinder\TwigCsFixer\ConfigResolver" />
+    </services>
 </container>

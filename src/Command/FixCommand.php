@@ -6,6 +6,7 @@ namespace Kellerkinder\TwigCsFixer\Command;
 
 use function count;
 use Kellerkinder\TwigCsFixer\Config;
+use Kellerkinder\TwigCsFixer\ConfigResolver;
 use Kellerkinder\TwigCsFixer\File;
 use Kellerkinder\TwigCsFixer\FileFixer\AbstractFileFixer;
 use Kellerkinder\TwigCsFixer\MatchFixer\AbstractMatchFixer;
@@ -16,22 +17,25 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Filesystem\Exception\FileNotFoundException;
 use Symfony\Component\Finder\Finder;
 use Throwable;
 
 class FixCommand extends Command
 {
+    /** @var ConfigResolver */
+    private $configResolver;
+
     /** @var AbstractMatchFixer[]|iterable */
     private $matchFixer;
 
     /** @var AbstractFileFixer[]|iterable */
     private $fileFixer;
 
-    public function __construct(iterable $matchFixer, iterable $fileFixer)
+    public function __construct(ConfigResolver $configResolver, iterable $matchFixer, iterable $fileFixer)
     {
-        $this->matchFixer = $matchFixer;
-        $this->fileFixer  = $fileFixer;
+        $this->configResolver = $configResolver;
+        $this->matchFixer     = $matchFixer;
+        $this->fileFixer      = $fileFixer;
 
         parent::__construct();
     }
@@ -40,21 +44,22 @@ class FixCommand extends Command
     {
         $this
             ->setName('fix')
-            ->addOption('config', 'c', InputOption::VALUE_REQUIRED, 'The path to the config file.')
-            ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'The path to scan for twig files.');
+            ->addOption('config', 'c', InputOption::VALUE_OPTIONAL, 'The path to the config file.', '')
+            ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'The paths to scan for twig files.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $configPath        = $input->getOption('config');
-        $configIncludePath = getcwd() . '/' . $configPath;
+        $config     = null;
+        $configPath = $input->getOption('config');
 
-        // TODO: add handling for default paths
-        if (file_exists($configIncludePath)) {
-            $config = require $configIncludePath;
-        } else {
-            // TODO: switch to default config
-            throw new FileNotFoundException(sprintf('File "%s" could not be found.', $configPath));
+        if (is_string($configPath)) {
+            $config = $this->configResolver->resolve($configPath);
+        }
+
+        if ($config === null) {
+//            TODO: implement handling
+            return 1;
         }
 
         $files = $this->getFiles($config, $output);
@@ -143,7 +148,14 @@ class FixCommand extends Command
 
             $matchLine  = $match->getLine();
             $partedLine = $file->getPartedLine($matchLine);
-            $file->setPartedLine($matchLine, str_replace($match->getMatch(), $match->getFixedMatch(), $partedLine));
+
+            if ($partedLine === null) {
+                continue;
+            }
+
+            $partedLine = str_replace($match->getMatch(), $match->getFixedMatch(), $partedLine);
+
+            $file->setPartedLine($matchLine, $partedLine);
         }
     }
 

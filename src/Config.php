@@ -13,14 +13,20 @@ class Config
 {
     /** @var Finder[] */
     private $finders;
-    private $rules       = ['base' => true];
-    private $indent      = IndentationFixer::BASE_ELEMENT_INDENT;
+
+    /** @var array */
+    private $rules = ['base' => true];
+
+    /** @var int */
+    private $indent = IndentationFixer::BASE_ELEMENT_INDENT;
+
+    /** @var bool */
     private $projectTest = false;
 
-    /** @var AbstractFileFixer|array */
+    /** @var AbstractFileFixer[]|array */
     private $customFileFixer = [];
 
-    /** @var AbstractMatchFixer|array */
+    /** @var AbstractMatchFixer[]|array */
     private $customMatchFixer = [];
 
     public function __construct(array $finders, array $rules = [], ?int $indent = null)
@@ -76,7 +82,7 @@ class Config
         $this->projectTest = $projectTest;
     }
 
-    public function getCustomFileFixer()
+    public function getCustomFileFixer(): array
     {
         return $this->customFileFixer;
     }
@@ -86,7 +92,7 @@ class Config
         $this->customFileFixer = $customFileFixer;
     }
 
-    public function getCustomMatchFixer()
+    public function getCustomMatchFixer(): array
     {
         return $this->customMatchFixer;
     }

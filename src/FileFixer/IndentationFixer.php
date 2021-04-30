@@ -6,7 +6,9 @@ namespace Kellerkinder\TwigCsFixer\FileFixer;
 
 use Kellerkinder\TwigCsFixer\File;
 
-// TODO: Fix TWIG multiline-handling
+// TODO: TWIG - implement else-handling
+// TODO: TWIG - implement custom calls (eg. {% set a = 'b' %}
+// TODO: HTML - ignore <script> - Content
 class IndentationFixer extends AbstractFileFixer
 {
     public const BASE_ELEMENT_INDENT = 4;
@@ -43,7 +45,13 @@ class IndentationFixer extends AbstractFileFixer
 
         foreach ($file->getLines() as $line) {
             $currentIndent = $nextIndent;
-            $result        = trim($line->getFixedMatch());
+            $result        = $file->getPartedLine($line->getLine());
+
+            if ($result === null) {
+                continue;
+            }
+
+            $result = trim($result);
 
             if (empty($result)) {
                 $file->setPartedLine($line->getLine(), $result);
@@ -89,31 +97,43 @@ class IndentationFixer extends AbstractFileFixer
             return self::LINE_TYPE_SELF_CLOSING;
         }
 
-        if ((preg_match(self::HTML_REGEX_OPEN, $match) > 0 && preg_match(self::HTML_REGEX_CLOSE, $match) > 0)
-            || (preg_match(self::TWIG_REGEX_OPEN, $match) > 0 && preg_match(self::TWIG_REGEX_CLOSE, $match) > 0)) {
+        if (($this->isRegexMatch($match, self::HTML_REGEX_OPEN) && $this->isRegexMatch($match, self::HTML_REGEX_CLOSE))
+            || ($this->isRegexMatch($match, self::TWIG_REGEX_OPEN) && $this->isRegexMatch($match, self::TWIG_REGEX_CLOSE))) {
             return self::LINE_TYPE_OPEN_AND_CLOSE;
         }
 
-        if (preg_match(self::HTML_REGEX_OPEN, $match) > 0 || preg_match(self::TWIG_REGEX_OPEN, $match) > 0) {
+        if ($this->isRegexMatch($match, self::HTML_REGEX_OPEN) || $this->isRegexMatch($match, self::TWIG_REGEX_OPEN)) {
             return self::LINE_TYPE_OPEN;
         }
 
-        if (preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) > 0 || preg_match(self::TWIG_REGEX_MULTILINE_OPEN, $match) > 0) {
+        if ($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_OPEN) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_OPEN)) {
             return self::LINE_TYPE_MULTI_LINE_OPEN;
         }
 
-        if ((preg_match(self::HTML_REGEX_MULTILINE_CLOSE, $match) > 0 || preg_match(self::TWIG_REGEX_MULTILINE_CLOSE, $match) > 0) && $isMultiLine) {
+        if (($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_CLOSE) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_CLOSE)) && $isMultiLine) {
             return self::LINE_TYPE_MULTI_LINE_CLOSE;
         }
 
-        if ((preg_match(self::HTML_REGEX_MULTILINE_CONTENT, $match) > 0 || preg_match(self::TWIG_REGEX_MULTILINE_CONTENT, $match) > 0) && $isMultiLine) {
+        if (($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_CONTENT) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_CONTENT)) && $isMultiLine) {
             return self::LINE_TYPE_MULTI_LINE_CONTENT;
         }
 
-        if (preg_match(self::HTML_REGEX_CLOSE, $match) > 0 || preg_match(self::TWIG_REGEX_CLOSE, $match) > 0) {
+        if ($this->isRegexMatch($match, self::HTML_REGEX_CLOSE) || $this->isRegexMatch($match, self::TWIG_REGEX_CLOSE)) {
             return self::LINE_TYPE_CLOSE;
         }
 
         return self::LINE_TYPE_CONTENT;
+    }
+
+    private function isRegexMatch(string $line, string $regex): bool
+    {
+        $matches = [];
+        $amount  = preg_match($regex, $line, $matches);
+
+        if ($amount <= 0) {
+            return false;
+        }
+
+        return $line === $matches[0];
     }
 }

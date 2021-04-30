@@ -1,14 +1,14 @@
-#IDE
+# IDE
 /.idea
 
-#Cache
+# cache
 /.php_cs.cache
 
-#dependencies
+# dependencies
 /vendor
 
-#project
+# project
 /test/files/output/*
 !/test/files/output/.gitkeep
-/twig_cs*
-!/twig_cs.dist
+/.twig_cs.*
+!/.twig_cs.dist
