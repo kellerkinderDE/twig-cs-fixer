@@ -6,7 +6,6 @@ namespace Kellerkinder\TwigCsFixer\FileFixer;
 
 use Kellerkinder\TwigCsFixer\File;
 
-// TODO: TWIG - implement else-handling
 // TODO: TWIG - implement custom calls (eg. {% set a = 'b' %}
 // TODO: HTML - ignore <script> - Content
 class IndentationFixer extends AbstractFileFixer
@@ -23,7 +22,7 @@ class IndentationFixer extends AbstractFileFixer
     public const HTML_REGEX_MULTILINE_CLOSE     = '/.*>/';
 
     public const TWIG_REGEX_OPEN              = '/{% [^end].* %}/';
-    public const TWIG_REGEX_ELSE              = '/{% el[a-z]+ %}/';
+    public const TWIG_REGEX_ELSE              = '/{% el[a-z]+.* %}/';
     public const TWIG_REGEX_CLOSE             = '/{% end[a-z]+ %}/';
     public const TWIG_REGEX_MULTILINE_OPEN    = '/{%[^end]*/';
     public const TWIG_REGEX_MULTILINE_CONTENT = '/[^{%]*[^%}]/';
@@ -37,6 +36,7 @@ class IndentationFixer extends AbstractFileFixer
     private const LINE_TYPE_MULTI_LINE_OPEN    = 6;
     private const LINE_TYPE_MULTI_LINE_CONTENT = 7;
     private const LINE_TYPE_MULTI_LINE_CLOSE   = 8;
+    private const LINE_TYPE_ELSE               = 9;
 
     public function fix(File $file): void
     {
@@ -79,6 +79,10 @@ class IndentationFixer extends AbstractFileFixer
                 $isMultiLine = false;
             }
 
+            if ($lineType === self::LINE_TYPE_ELSE) {
+                --$currentIndent;
+            }
+
             if ($currentIndent > 0) {
                 if ($lineType === self::LINE_TYPE_MULTI_LINE_CONTENT || $lineType === self::LINE_TYPE_MULTI_LINE_CLOSE) {
                     $result = str_repeat(' ', self::BASE_ELEMENT_INDENT * $currentIndent) . str_repeat(' ', self::BASE_INSIDE_INDENT) . $result;
@@ -104,6 +108,10 @@ class IndentationFixer extends AbstractFileFixer
 
         if ($this->isRegexMatch($match, self::HTML_REGEX_OPEN) || $this->isRegexMatch($match, self::TWIG_REGEX_OPEN)) {
             return self::LINE_TYPE_OPEN;
+        }
+
+        if ($this->isRegexMatch($match, self::TWIG_REGEX_ELSE)) {
+            return self::LINE_TYPE_ELSE;
         }
 
         if ($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_OPEN) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_OPEN)) {
