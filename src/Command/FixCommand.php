@@ -44,8 +44,8 @@ class FixCommand extends Command
     {
         $this
             ->setName('fix')
-            ->addOption('config', 'c', InputOption::VALUE_OPTIONAL, 'The path to the config file.', '')
-            ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'The paths to scan for twig files.');
+            ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'The paths to scan for twig files.')
+            ->addOption('config', 'c', InputOption::VALUE_OPTIONAL, 'The path to the config file.', '');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -62,6 +62,7 @@ class FixCommand extends Command
             return 1;
         }
 
+        $this->mapPaths($config, $input);
         $files = $this->getFiles($config, $output);
         $this->fixViolations($config, $files, $output);
 
@@ -70,16 +71,17 @@ class FixCommand extends Command
 
     protected function getFiles(Config $config, OutputInterface $output): array
     {
-        /** @var Finder[] $finders */
-        $finders = $config->getFinders();
-        $parser  = new Parser();
-        $files   = [];
+        $parser = new Parser();
+        $files  = [];
 
         $output->writeln('Start collecting files');
-        foreach ($finders as $finder) {
+        $progressBar = new ProgressBar($output, count($config->getFiles()));
+        $progressBar->start();
+
+        /** @var Finder $finder */
+        foreach ($config->getFinders() as $finder) {
             $fileIterator = $finder->files();
-            $progressBar  = new ProgressBar($output, $fileIterator->count());
-            $progressBar->start();
+            $progressBar->setMaxSteps($progressBar->getMaxSteps() + $fileIterator->count());
 
             foreach ($fileIterator as $file) {
                 try {
@@ -103,9 +105,30 @@ class FixCommand extends Command
 
                 $progressBar->advance();
             }
-
-            $progressBar->finish();
         }
+
+        foreach ($config->getFiles() as $realPath) {
+            try {
+                if (!$realPath) {
+                    continue;
+                }
+
+                $fileContent = file_get_contents($realPath);
+
+                if (!empty($fileContent)) {
+                    $file = new File(basename($realPath), $realPath, $fileContent);
+                    $parser->parseFile($file);
+                    $files[] = $file;
+                }
+            } catch (Throwable $t) {
+                $progressBar->finish();
+                $output->writeln(sprintf('ERROR: %s', $t->getMessage()));
+            }
+
+            $progressBar->advance();
+        }
+
+        $progressBar->finish();
 
         return $files;
     }
@@ -167,6 +190,36 @@ class FixCommand extends Command
 
         foreach ($config->getCustomFileFixer() as $fixer) {
             $fixer->fix($file);
+        }
+    }
+
+    protected function mapPaths(Config $config, InputInterface $input): void
+    {
+        $paths = $input->getArgument('paths');
+
+        if (!empty($paths)) {
+            $config->resetFinders();
+
+            foreach ($paths as $path) {
+                if ($path[0] !== '/') {
+                    $path = sprintf('%s/%s', getcwd(), $path);
+                }
+
+                if (!file_exists($path)) {
+//                    TODO: throw error
+                    continue;
+                }
+
+                if (is_dir($path)) {
+                    $config->addFinder((new Finder())->in(sprintf('%s/%s', getcwd(), $path)));
+
+                    continue;
+                }
+
+                if (is_file($path)) {
+                    $config->addFile($path);
+                }
+            }
         }
     }
 }

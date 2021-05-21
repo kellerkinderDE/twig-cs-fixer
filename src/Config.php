@@ -15,6 +15,9 @@ class Config
     private $finders;
 
     /** @var array */
+    private $files = [];
+
+    /** @var array */
     private $rules = ['base' => true];
 
     /** @var int */
@@ -50,6 +53,31 @@ class Config
     public function setFinders(array $finders): void
     {
         $this->finders = $finders;
+    }
+
+    public function resetFinders(): void
+    {
+        $this->finders = [];
+    }
+
+    public function addFinder(Finder $finder): void
+    {
+        $this->finders[] = $finder;
+    }
+
+    public function getFiles(): array
+    {
+        return $this->files;
+    }
+
+    public function setFiles(array $files): void
+    {
+        $this->files = $files;
+    }
+
+    public function addFile(string $file): void
+    {
+        $this->files[] = $file;
     }
 
     public function getRules(): array

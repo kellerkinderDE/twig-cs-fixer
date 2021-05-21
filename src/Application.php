@@ -19,7 +19,7 @@ class Application extends BaseApplication
     /** @var ContainerBuilder */
     private $container;
 
-    public function __construct(bool $singleCommand = false)
+    public function __construct(bool $singleCommand = true)
     {
         parent::__construct(self::NAME, self::VERSION);
 

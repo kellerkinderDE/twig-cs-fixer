@@ -6,6 +6,8 @@ namespace Kellerkinder\TwigCsFixer;
 
 class ConfigResolver
 {
+    public const MAX_DEPTH_SEARCH = 5;
+
     public const DEFAULT_CONFIG_NAMES = [
         '.twig_cs',
         '.twig_cs.php',
@@ -30,8 +32,13 @@ class ConfigResolver
             }
         }
 
+        return $this->determineConfig($projectPath);
+    }
+
+    private function determineConfig(string $projectPath, int $searchLevel = 0): ?Config
+    {
         foreach (self::DEFAULT_CONFIG_NAMES as $configName) {
-            $configIncludePath = sprintf('%s/%s', $projectPath, $configPath);
+            $configIncludePath = sprintf('%s/%s', $projectPath, $configName);
 
             if (file_exists($configIncludePath)) {
                 $config = require $configIncludePath;
@@ -40,6 +47,10 @@ class ConfigResolver
                     return $config;
                 }
             }
+        }
+
+        if ($searchLevel < self::MAX_DEPTH_SEARCH) {
+            return $this->determineConfig(sprintf('%s/..', $projectPath), $searchLevel + 1);
         }
 
         return null;
