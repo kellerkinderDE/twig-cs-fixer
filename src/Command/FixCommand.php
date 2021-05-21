@@ -211,7 +211,11 @@ class FixCommand extends Command
                 }
 
                 if (is_dir($path)) {
-                    $config->addFinder((new Finder())->in(sprintf('%s/%s', getcwd(), $path)));
+                    $config->addFinder((new Finder())
+                        ->in(sprintf('%s/%s', getcwd(), $path))
+                        ->name('*.twig')
+                        ->name('*.html')
+                    );
 
                     continue;
                 }

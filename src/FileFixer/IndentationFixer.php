@@ -80,11 +80,6 @@ class IndentationFixer extends AbstractFileFixer
                 $isMultiLine = true;
             }
 
-            if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE) {
-                ++$nextIndent;
-                $isMultiLine = false;
-            }
-
             if ($lineType === self::LINE_TYPE_ELSE) {
                 --$currentIndent;
             }
@@ -97,6 +92,11 @@ class IndentationFixer extends AbstractFileFixer
                 }
             }
 
+            if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE) {
+                ++$nextIndent;
+                $isMultiLine = false;
+            }
+
             $file->setPartedLine($line->getLine(), $result);
         }
     }
@@ -105,6 +105,14 @@ class IndentationFixer extends AbstractFileFixer
     {
         if (strpos($match, '/>')) {
             return self::LINE_TYPE_SELF_CLOSING;
+        }
+
+        if (($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_CLOSE) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_CLOSE)) && $isMultiLine) {
+            return self::LINE_TYPE_MULTI_LINE_CLOSE;
+        }
+
+        if (($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_CONTENT) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_CONTENT)) && $isMultiLine) {
+            return self::LINE_TYPE_MULTI_LINE_CONTENT;
         }
 
         if ((preg_match(self::HTML_REGEX_OPEN, $match) > 0 && preg_match(self::HTML_REGEX_CLOSE, $match) > 0)
@@ -126,14 +134,6 @@ class IndentationFixer extends AbstractFileFixer
 
         if ($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_OPEN) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_OPEN)) {
             return self::LINE_TYPE_MULTI_LINE_OPEN;
-        }
-
-        if (($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_CLOSE) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_CLOSE)) && $isMultiLine) {
-            return self::LINE_TYPE_MULTI_LINE_CLOSE;
-        }
-
-        if (($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_CONTENT) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_CONTENT)) && $isMultiLine) {
-            return self::LINE_TYPE_MULTI_LINE_CONTENT;
         }
 
         if (preg_match(self::HTML_REGEX_CLOSE, $match) > 0 || preg_match(self::TWIG_REGEX_CLOSE, $match) > 0) {

@@ -7,7 +7,9 @@ use Symfony\Component\Finder\Finder;
 
 require 'vendor/autoload.php';
 
-$finder = Finder::create()->in(__DIR__ . '/src');
-$config = new Config([$finder]);
+$finder = Finder::create()
+    ->in(__DIR__ . '/src')
+    ->name('*.twig')
+    ->name('*.html');
 
-return $config;
+return new Config([$finder]);
