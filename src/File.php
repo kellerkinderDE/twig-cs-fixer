@@ -35,6 +35,7 @@ class File
         $this->name    = $name;
         $this->path    = $path;
         $this->content = $content;
+        $this->matches = [];
     }
 
     public function getName(): string

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Kellerkinder\TwigCsFixer;
 
 use Kellerkinder\TwigCsFixer\FileFixer\AbstractFileFixer;
-use Kellerkinder\TwigCsFixer\FileFixer\IndentationFixer;
+use Kellerkinder\TwigCsFixer\FileFixer\IndentFixer;
 use Kellerkinder\TwigCsFixer\MatchFixer\AbstractMatchFixer;
 use Symfony\Component\Finder\Finder;
 
@@ -21,7 +21,7 @@ class Config
     private $rules = ['base' => true];
 
     /** @var int */
-    private $indent = IndentationFixer::BASE_ELEMENT_INDENT;
+    private $indent = IndentFixer::BASE_ELEMENT_INDENT;
 
     /** @var bool */
     private $projectTest = false;

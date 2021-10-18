@@ -9,7 +9,7 @@ use Kellerkinder\TwigCsFixer\Match;
 
 // TODO: TWIG - implement custom calls (eg. {% set a = 'b' %}
 // TODO: HTML - ignore <script> - Content
-class IndentationFixer extends AbstractFileFixer
+class IndentFixer extends AbstractFileFixer
 {
     public const BASE_ELEMENT_INDENT = 4;
     public const BASE_INSIDE_INDENT  = 2;
@@ -92,6 +92,7 @@ class IndentationFixer extends AbstractFileFixer
                 }
             }
 
+//            TODO: add check if MULTI_LINE_OPEN has closing tag for indent increase
             if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE) {
                 ++$nextIndent;
                 $isMultiLine = false;
@@ -132,12 +133,13 @@ class IndentationFixer extends AbstractFileFixer
             return self::LINE_TYPE_ELSE;
         }
 
-        if ($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_OPEN) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_OPEN)) {
-            return self::LINE_TYPE_MULTI_LINE_OPEN;
-        }
-
         if (preg_match(self::HTML_REGEX_CLOSE, $match) > 0 || preg_match(self::TWIG_REGEX_CLOSE, $match) > 0) {
             return self::LINE_TYPE_CLOSE;
+        }
+
+        if (preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) > 0 || preg_match(self::TWIG_REGEX_MULTILINE_OPEN, $match) > 0) {
+//        if ($this->isRegexMatch($match, self::HTML_REGEX_MULTILINE_OPEN) || $this->isRegexMatch($match, self::TWIG_REGEX_MULTILINE_OPEN)) {
+            return self::LINE_TYPE_MULTI_LINE_OPEN;
         }
 
         return self::LINE_TYPE_CONTENT;
