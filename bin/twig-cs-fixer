@@ -14,5 +14,5 @@ if (file_exists(__DIR__ . '/../../../autoload.php')) {
 try {
     (new Application())->run();
 } catch (\Throwable $t) {
-    echo PHP_EOL . sprintf('ERROR[%s]: %s', $t->getCode(), $t->getMessage()) . PHP_EOL;
+    echo PHP_EOL . sprintf('ERROR[%s]: %s @ %s:%s', $t->getCode(), $t->getMessage(), $t->getFile(), $t->getLine()) . PHP_EOL;
 }
