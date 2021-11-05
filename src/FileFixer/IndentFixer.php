@@ -49,9 +49,9 @@ class IndentFixer extends AbstractFileFixer
         $multiLineOpenMatch = false;
 
         foreach ($file->getLines() as $line) {
-            if ((int) preg_match('/<script.*>/', $line->getMatch()) > 0) {
+            if (preg_match('/<script.*>/', $line->getMatch()) === 1
+                && preg_match('/<\/script.*>/', $line->getMatch()) !== 1) {
                 $isScriptBlock = !$isScriptBlock;
-                $nextIndent += 2;
             }
 
             if ($isScriptBlock) {
@@ -74,6 +74,7 @@ class IndentFixer extends AbstractFileFixer
             }
 
             $lineType = $this->getLineType($result, $isMultiLine);
+
             if ($lineType === self::LINE_TYPE_OPEN
                 && $this->hasClosingTag($line, $file->getPartedLines())) {
                 ++$nextIndent;
@@ -92,29 +93,16 @@ class IndentFixer extends AbstractFileFixer
             if ($lineType === self::LINE_TYPE_MULTI_LINE_OPEN) {
                 $isMultiLine = true;
                 $multiLineOpenMatch = $line;
-
-                if($this->hasClosingTag($line, $file->getPartedLines())) {
-                    ++$nextIndent;
-                }
             }
 
             if ($lineType === self::LINE_TYPE_ELSE) {
                 --$currentIndent;
             }
 
-            if ($currentIndent > 0) {
-                if ($lineType === self::LINE_TYPE_MULTI_LINE_CONTENT) {
-                    $result = str_repeat(' ', self::BASE_ELEMENT_INDENT * $currentIndent) . str_repeat(
-                            ' ',
-                            self::BASE_INSIDE_INDENT
-                        ) . $result;
-                } else {
-                    $result = str_repeat(' ', self::BASE_ELEMENT_INDENT * $currentIndent) . $result;
-                }
-            }
+            $result = $this->getResult($currentIndent, $lineType, $result, $isMultiLine);
 
             if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE) {
-                if ($this->hasClosingTag($line, $file->getPartedLines(), $multiLineOpenMatch)) {
+                if ($isMultiLine && $this->hasClosingTag($line, $file->getPartedLines(), $multiLineOpenMatch)) {
                     ++$nextIndent;
                 }
 
@@ -178,18 +166,6 @@ class IndentFixer extends AbstractFileFixer
         return $isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
     }
 
-    private function isFullRegexMatch(string $line, string $regex): bool
-    {
-        $matches = [];
-        $amount  = preg_match($regex, $line, $matches);
-
-        if ($amount <= 0) {
-            return false;
-        }
-
-        return $line === $matches[0];
-    }
-
     private function hasClosingTag(Match $line, array $partedLines, ?Match $multiLineOpenMatch = null): bool
     {
         $trimmedMatch = $multiLineOpenMatch !== null ? trim($multiLineOpenMatch->getFixedMatch()) : trim($line->getFixedMatch());
@@ -204,6 +180,10 @@ class IndentFixer extends AbstractFileFixer
 
             if ($pregPrefixFound !== 1 && $multiLineOpenMatch !== null) {
                 $pregPrefixFound = preg_match('/{%-? ([a-zA-Z0-9]+)/', $trimmedMatch, $prefixedMatches);
+
+                if ($pregPrefixFound !== 1 && $multiLineOpenMatch !== null) {
+                    $pregPrefixFound = preg_match('/{{-? ([a-zA-Z0-9]+)/', $trimmedMatch, $prefixedMatches);
+                }
             }
         }
 
@@ -218,16 +198,13 @@ class IndentFixer extends AbstractFileFixer
         }
         $prefixedPlainStartMatch = sprintf('%s %s','{%', $plainMatch);
         $prefixedPlainEndMatch = sprintf('end%s', $plainMatch);
-        $prefixedEndMatch = str_replace($plainMatch, $prefixedPlainEndMatch, $prefixedMatch);
+
         if (preg_match('/<.*>/', $trimmedMatch) > 0) {
             $prefixedPlainStartMatch = sprintf('%s%s','<', $plainMatch);
             $prefixedPlainEndMatch = sprintf('%s%s', '/', $plainMatch);
-            $prefixedEndMatch = str_replace($plainMatch, $prefixedPlainEndMatch, $prefixedMatch);
         }
 
-
-        $opened           = 0;
-
+        $opened = 0;
         foreach ($partedLines as $lineNumber => $partedLine) {
             if ($lineNumber <= $line->getLine()) {
                 continue;
@@ -268,5 +245,21 @@ class IndentFixer extends AbstractFileFixer
         $pregMatchPattern = sprintf('%s%s%s', self::TWIG_REGEX_OPEN_SECURE_PART_ONE, $matches[0], self::TWIG_REGEX_OPEN_SECURE_PART_TWO);
 
         return (int) preg_match($pregMatchPattern, $match) > 0;
+    }
+
+    private function getResult(int $currentIndent, int $lineType, string $result, bool $isMultiLine): string
+    {
+        $basePadding = '';
+        $multilineContentPadding = '';
+
+        if ($currentIndent > 0) {
+            $basePadding             = str_repeat(' ', self::BASE_ELEMENT_INDENT * $currentIndent);
+        }
+
+        if ($isMultiLine) {
+            $multilineContentPadding = str_repeat(' ', self::BASE_INSIDE_INDENT);
+        }
+
+        return sprintf('%s%s%s', $basePadding, $multilineContentPadding, $result);
     }
 }
