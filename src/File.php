@@ -70,11 +70,7 @@ class File
 
     public function getPartedLine(int $lineNumber): ?string
     {
-        if (array_key_exists($lineNumber, $this->partedLines)) {
-            return $this->partedLines[$lineNumber];
-        }
-
-        return null;
+        return $this->partedLines[$lineNumber] ?? null;
     }
 
     public function setPartedLine(int $lineNumber, string $line): void
