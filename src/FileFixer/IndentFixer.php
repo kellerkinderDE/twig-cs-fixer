@@ -116,17 +116,21 @@ class IndentFixer extends AbstractFileFixer
 
     protected function getLineType(string $match, bool $isMultiLine = false): int
     {
-        if (strpos($match, '/>')) {
+        if (strpos($match, '/>') && !$isMultiLine) {
             return self::LINE_TYPE_SELF_CLOSING;
-        }
-
-        if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1) {
-            return $isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
         }
 
         if ((preg_match(self::HTML_REGEX_OPEN, $match) === 1 && preg_match(self::HTML_REGEX_CLOSE, $match) === 1)
             || (preg_match(self::TWIG_REGEX_OPEN, $match) === 1 && $this->isTwigClosingTag($match))) {
             return self::LINE_TYPE_OPEN_AND_CLOSE;
+        }
+
+        if (preg_match(self::HTML_REGEX_OPEN, $match) === 1) {
+            return self::LINE_TYPE_OPEN;
+        }
+
+        if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1) {
+            return $isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
         }
 
         if (preg_match(self::HTML_REGEX_CLOSE, $match) === 1
@@ -146,10 +150,6 @@ class IndentFixer extends AbstractFileFixer
         if ((preg_match(self::HTML_REGEX_MULTILINE_CONTENT, $match) === 1
                 || preg_match(self::TWIG_REGEX_MULTILINE_CONTENT, $match) === 1) && $isMultiLine) {
             return self::LINE_TYPE_MULTI_LINE_CONTENT;
-        }
-
-        if (preg_match(self::HTML_REGEX_OPEN, $match) === 1) {
-            return self::LINE_TYPE_OPEN;
         }
 
         if (preg_match(self::TWIG_REGEX_OPEN, $match) === 1
@@ -202,9 +202,11 @@ class IndentFixer extends AbstractFileFixer
         if (preg_match('/<.*>/', $trimmedMatch) > 0) {
             $prefixedPlainStartMatch = sprintf('%s%s','<', $plainMatch);
             $prefixedPlainEndMatch = sprintf('%s%s', '/', $plainMatch);
+
         }
 
         $opened = 0;
+
         foreach ($partedLines as $lineNumber => $partedLine) {
             if ($lineNumber <= $line->getLine()) {
                 continue;
