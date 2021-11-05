@@ -14,5 +14,5 @@
 
 
 ## Known issues
-* `title="{{ variable|stuff(5)|map(user => user.email)|join("<br>") }}">` Will result in an invalid format of the file starting here
 * JavaScript (eg. everythin inside `<script>`-blocks) is not touched
+* Multiple calls for the same function example:`{% set` - some with and some without closing block
