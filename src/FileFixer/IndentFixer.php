@@ -20,15 +20,19 @@ class IndentFixer extends AbstractFileFixer
     public const HTML_REGEX_MULTILINE_CONTENT   = '/[^<]*[^>]/';
     public const HTML_REGEX_MULTILINE_CLOSE     = '/.*>/';
 
-    public const TWIG_REGEX_OPEN                 = '/{%-? .* -?%}/';
-    public const TWIG_REGEX_CONTENT              = '/{{-? ?.* ?-?}}/';
-    public const TWIG_REGEX_OPEN_SECURE_PART_ONE = '/\{\%-? end';   // used via sprintf with the opening match
-    public const TWIG_REGEX_OPEN_SECURE_PART_TWO = '.*\-?%\}/';     // used via sprintf with the opening match
-    public const TWIG_REGEX_ELSE                 = '/{%-? el[a-z]+.*? -?%}/';
-    public const TWIG_REGEX_CLOSE                = '/{%-? end[a-z]+ ?.*? -?%}/';
-    public const TWIG_REGEX_MULTILINE_OPEN       = '/{[%{]-?[^end]*/';
-    public const TWIG_REGEX_MULTILINE_CONTENT    = '/[^{%-?]*[^-?%}]/';
-    public const TWIG_REGEX_MULTILINE_CLOSE      = '/.*-?(%})|(}})/';
+    public const TWIG_REGEX_OPEN                  = '/{%-? .* -?%}/';
+    public const TWIG_REGEX_CONTENT               = '/{{-? ?.* ?-?}}/';
+    public const TWIG_REGEX_OPEN_SECURE_PART_ONE  = '/\{\%-? end';   // used via sprintf with the opening match
+    public const TWIG_REGEX_OPEN_SECURE_PART_TWO  = '.*\-?%\}/';     // used via sprintf with the opening match
+    public const TWIG_REGEX_ELSE                  = '/{%-? el[a-z]+.*? -?%}/';
+    public const TWIG_REGEX_CLOSE                 = '/{%-? end[a-z]+ ?.*? -?%}/';
+    public const TWIG_REGEX_MULTILINE_OPEN        = '/{[%{]-?[^end]*/';
+    public const TWIG_REGEX_MULTILINE_CONTENT     = '/[^{%-?]*[^-?%}]/';
+    public const TWIG_REGEX_MULTILINE_CLOSE       = '/.*-?(%})|(}})/';
+    public const TWIG_REGEX_INNER_TAG_OPEN        = '/\:?\S+=[\'"]{/';
+    public const TWIG_REGEX_INNER_TAG_CLOSE       = '/\s?}[\'"]/';
+    public const TWIG_REGEX_INNER_TAG_SELFCLOSING = '/\:?\S+=[\'"]{.*}[\'"]/';
+    public const TWIG_REGEX_INNER_FUNCTION        = '/.*: [\'"]{{ .+ }}[\'"]/';
 
     private const LINE_TYPE_OPEN               = 1;
     private const LINE_TYPE_CONTENT            = 2;
@@ -41,19 +45,25 @@ class IndentFixer extends AbstractFileFixer
     private const LINE_TYPE_ELSE               = 9;
     private const LINE_TYPE_TWIG_OPEN          = 10;
 
-    private const MULTI_LINE_OPEN_NONE = 0;
-    private const MULTI_LINE_OPEN_TWIG = 1;
-    private const MULTI_LINE_OPEN_HTML = 2;
+    private const MULTI_LINE_OPEN_NONE   = 20;
+    private const MULTI_LINE_OPEN_TWIG   = 21;
+    private const MULTI_LINE_OPEN_HTML   = 22;
+    private const MULTI_LINE_OPEN_INNER  = 23;
+    private const MULTI_LINE_CLOSE_INNER = 24;
 
     /** @var int */
     protected $multiLineOpen = self::MULTI_LINE_OPEN_NONE;
 
+    /** @var bool */
+    protected $isMultiLine = false;
+    /** @var bool */
+    protected $isInnerMultiLine = false;
+
     public function fix(File $file): void
     {
-        $nextIndent    = 0;
-        $isMultiLine   = false;
-        $isScriptBlock = false;
-        $multiLineOpenMatch = false;
+        $nextIndent         = 0;
+        $isScriptBlock      = false;
+        $multiLineOpenMatch = null;
 
         foreach ($file->getLines() as $line) {
             if (preg_match('/<script.*>/', $line->getMatch()) === 1
@@ -80,7 +90,7 @@ class IndentFixer extends AbstractFileFixer
                 continue;
             }
 
-            $lineType = $this->getLineType($result, $isMultiLine);
+            $lineType = $this->getLineType($result);
 
             if ($lineType === self::LINE_TYPE_OPEN
                 && $this->hasClosingTag($line, $file->getPartedLines())) {
@@ -98,7 +108,7 @@ class IndentFixer extends AbstractFileFixer
             }
 
             if ($lineType === self::LINE_TYPE_MULTI_LINE_OPEN) {
-                $isMultiLine = true;
+                $this->isMultiLine  = true;
                 $multiLineOpenMatch = $line;
             }
 
@@ -106,25 +116,39 @@ class IndentFixer extends AbstractFileFixer
                 --$currentIndent;
             }
 
-            $result = $this->getResult($currentIndent, $lineType, $result, $isMultiLine);
+            $result = $this->getResult($currentIndent, $lineType, $result);
 
             if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE) {
-                if ($isMultiLine && $this->hasClosingTag($line, $file->getPartedLines(), $multiLineOpenMatch)) {
+                if ($this->isMultiLine && $this->hasClosingTag($line, $file->getPartedLines(), $multiLineOpenMatch)) {
                     ++$nextIndent;
                 }
 
-                $isMultiLine = false;
+                $this->isMultiLine  = false;
                 $multiLineOpenMatch = null;
+            }
+
+            if ($lineType === self::MULTI_LINE_CLOSE_INNER) {
+                $this->isInnerMultiLine = false;
             }
 
             $file->setPartedLine($line->getLine(), $result);
         }
     }
 
-    protected function getLineType(string $match, bool $isMultiLine = false): int
+    protected function getLineType(string $match): int
     {
-        if (strpos($match, '/>') && !$isMultiLine) {
+        if (!$this->isMultiLine && strpos($match, '/>')) {
             return self::LINE_TYPE_SELF_CLOSING;
+        }
+
+        if ($this->isMultiLine && $this->isInnerMultiLine
+            && preg_match(self::TWIG_REGEX_INNER_TAG_CLOSE, $match) === 1
+            && preg_match(self::TWIG_REGEX_INNER_TAG_SELFCLOSING, $match) !== 1
+//            && preg_match(self::TWIG_REGEX_INNER_FUNCTION, $match) !== 1 //TODO: Fixes the vuejs includes but kills the twig includes
+        ) {
+            $this->isInnerMultiLine = false;
+
+            return self::MULTI_LINE_CLOSE_INNER;
         }
 
         if ((preg_match(self::HTML_REGEX_OPEN, $match) === 1 && preg_match(self::HTML_REGEX_CLOSE, $match) === 1)
@@ -150,45 +174,60 @@ class IndentFixer extends AbstractFileFixer
             return self::LINE_TYPE_CLOSE;
         }
 
-        if ($isMultiLine && $this->multiLineOpen === self::MULTI_LINE_OPEN_HTML && preg_match(self::HTML_REGEX_MULTILINE_CLOSE, $match) === 1) {
+        if ($this->isMultiLine && $this->multiLineOpen === self::MULTI_LINE_OPEN_HTML
+            && preg_match(self::HTML_REGEX_MULTILINE_CLOSE, $match) === 1) {
             $this->multiLineOpen = self::MULTI_LINE_OPEN_NONE;
+
             return self::LINE_TYPE_MULTI_LINE_CLOSE;
         }
 
-        if($isMultiLine && $this->multiLineOpen === self::MULTI_LINE_OPEN_TWIG && preg_match(self::TWIG_REGEX_MULTILINE_CLOSE, $match) === 1) {
+        if ($this->isMultiLine && $this->multiLineOpen === self::MULTI_LINE_OPEN_TWIG
+            && preg_match(self::TWIG_REGEX_MULTILINE_CLOSE, $match) === 1) {
             $this->multiLineOpen = self::MULTI_LINE_OPEN_NONE;
+
             return self::LINE_TYPE_MULTI_LINE_CLOSE;
         }
 
-        if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1 && preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) !== 1) {
-            return $isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
+        if ($this->isMultiLine
+            && preg_match(self::TWIG_REGEX_INNER_TAG_OPEN, $match) === 1
+            && preg_match(self::TWIG_REGEX_INNER_TAG_SELFCLOSING, $match) !== 1) {
+            $this->isInnerMultiLine = true;
+
+            return self::MULTI_LINE_OPEN_INNER;
         }
 
-        if ($isMultiLine && (preg_match(self::HTML_REGEX_MULTILINE_CONTENT, $match) === 1
+        if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1
+            && preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) !== 1) {
+            return $this->isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
+        }
+
+        if ($this->isMultiLine && (preg_match(self::HTML_REGEX_MULTILINE_CONTENT, $match) === 1
                 || preg_match(self::TWIG_REGEX_MULTILINE_CONTENT, $match) === 1)) {
             return self::LINE_TYPE_MULTI_LINE_CONTENT;
         }
 
         if (preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) === 1) {
             $this->multiLineOpen = self::MULTI_LINE_OPEN_HTML;
+
             return self::LINE_TYPE_MULTI_LINE_OPEN;
         }
 
-        if(preg_match(self::TWIG_REGEX_MULTILINE_OPEN, $match) === 1
+        if (preg_match(self::TWIG_REGEX_MULTILINE_OPEN, $match) === 1
             && preg_match(self::TWIG_REGEX_CLOSE, $match) !== 1) {
             $this->multiLineOpen = self::MULTI_LINE_OPEN_TWIG;
+
             return self::LINE_TYPE_MULTI_LINE_OPEN;
         }
 
-        return $isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
+        return $this->isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
     }
 
     private function hasClosingTag(Match $line, array $partedLines, ?Match $multiLineOpenMatch = null): bool
     {
-        $trimmedMatch = $multiLineOpenMatch !== null ? trim($multiLineOpenMatch->getFixedMatch()) : trim($line->getFixedMatch());
+        $trimmedMatch    = $multiLineOpenMatch !== null ? trim($multiLineOpenMatch->getFixedMatch()) : trim($line->getFixedMatch());
         $prefixedMatches = [];
 
-        if($this->isTagWithoutClosing($trimmedMatch)) {
+        if ($this->isTagWithoutClosing($trimmedMatch)) {
             return false;
         }
 
@@ -216,24 +255,22 @@ class IndentFixer extends AbstractFileFixer
             return false;
         }
 
-        $prefixedMatch  = current($prefixedMatches);
-        $plainMatch     = $prefixedMatch;
+        $prefixedMatch = current($prefixedMatches);
+        $plainMatch    = $prefixedMatch;
 
-        if(is_array($prefixedMatches)) {
-            $plainMatch       = end($prefixedMatches);
+        if (is_array($prefixedMatches)) {
+            $plainMatch = end($prefixedMatches);
         }
 
-        $prefixedPlainStartMatch = sprintf('%s %s','{%', $plainMatch);
-        $prefixedPlainEndMatch = sprintf('end%s', $plainMatch);
+        $prefixedPlainStartMatch = sprintf('%s %s', '{%', $plainMatch);
+        $prefixedPlainEndMatch   = sprintf('end%s', $plainMatch);
 
         if (preg_match('/<.*>?/', $trimmedMatch) > 0) {
-            $prefixedPlainStartMatch = sprintf('%s%s','<', $plainMatch);
-            $prefixedPlainEndMatch = sprintf('%s%s', '/', $plainMatch);
-
+            $prefixedPlainStartMatch = sprintf('%s%s', '<', $plainMatch);
+            $prefixedPlainEndMatch   = sprintf('%s%s', '/', $plainMatch);
         }
 
         $opened = 0;
-
         foreach ($partedLines as $lineNumber => $partedLine) {
             if ($lineNumber <= $line->getLine()) {
                 continue;
@@ -276,18 +313,21 @@ class IndentFixer extends AbstractFileFixer
         return (int) preg_match($pregMatchPattern, $match) > 0;
     }
 
-    private function getResult(int $currentIndent, int $lineType, string $result, bool $isMultiLine): string
+    private function getResult(int $currentIndent, int $lineType, string $result): string
     {
-        $basePadding = '';
+        $basePadding             = '';
         $multilineContentPadding = '';
 
         if ($currentIndent > 0) {
-            $basePadding             = str_repeat(' ', self::BASE_ELEMENT_INDENT * $currentIndent);
+            $basePadding = str_repeat(' ', self::BASE_ELEMENT_INDENT * $currentIndent);
         }
 
-        if ($isMultiLine
-            && $lineType !== self::LINE_TYPE_MULTI_LINE_OPEN) {
+        if ($this->isMultiLine && $lineType !== self::LINE_TYPE_MULTI_LINE_OPEN) {
             $multilineContentPadding = str_repeat(' ', self::BASE_INSIDE_INDENT);
+
+            if ($this->isInnerMultiLine && $lineType !== self::MULTI_LINE_OPEN_INNER) {
+                $multilineContentPadding .= str_repeat(' ', self::BASE_INSIDE_INDENT);
+            }
         }
 
         return sprintf('%s%s%s', $basePadding, $multilineContentPadding, $result);
@@ -295,11 +335,11 @@ class IndentFixer extends AbstractFileFixer
 
     private function isTagWithoutClosing(string $line): bool
     {
-        if(preg_match('/{%-? set .+ ?=/', $line) === 1) {
+        if (preg_match('/{%-? set .+ ?=/', $line) === 1) {
             return true;
         }
 
-        if(preg_match('/{%-? parent -?%}/', $line) === 1) {
+        if (preg_match('/{%-? parent -?%}/', $line) === 1) {
             return true;
         }
 

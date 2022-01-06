@@ -16,3 +16,5 @@
 ## Known issues
 * JavaScript (eg. everythin inside `<script>`-blocks) is not touched
 * Multiple calls for the same function example:`{% set` - some with and some without closing block
+* Attribute tags are not aligned
+* Attribute tags are not sorted
