@@ -62,7 +62,7 @@ class FixCommand extends Command
             return 1;
         }
 
-        $this->mapPaths($config, $input);
+        $this->mapPaths($config, $input, $output);
         $files = $this->getFiles($config, $output);
         $this->fixViolations($config, $files, $output);
 
@@ -162,11 +162,15 @@ class FixCommand extends Command
     {
         foreach ($file->getMatches() as $match) {
             foreach ($this->matchFixer as $fixer) {
-                $fixer->fix($match);
+                if ($fixer->isActive($config->getRules())) {
+                    $fixer->fix($config, $match);
+                }
             }
 
             foreach ($config->getCustomMatchFixer() as $fixer) {
-                $fixer->fix($match);
+                if ($fixer->isActive($config->getRules())) {
+                    $fixer->fix($config, $match);
+                }
             }
 
             $matchLine  = $match->getLine();
@@ -185,45 +189,61 @@ class FixCommand extends Command
     protected function fixFile(Config $config, File $file): void
     {
         foreach ($this->fileFixer as $fixer) {
-            $fixer->fix($file);
+            if ($fixer->isActive($config->getRules())) {
+                $fixer->fix($config, $file);
+            }
         }
 
         foreach ($config->getCustomFileFixer() as $fixer) {
-            $fixer->fix($file);
+            if ($fixer->isActive($config->getRules())) {
+                $fixer->fix($config, $file);
+            }
         }
     }
 
-    protected function mapPaths(Config $config, InputInterface $input): void
+    protected function mapPaths(Config $config, InputInterface $input, OutputInterface $output): void
     {
         $paths = $input->getArgument('paths');
 
         if (!empty($paths)) {
             $config->resetFinders();
 
-            foreach ($paths as $path) {
-                if ($path[0] !== '/') {
-                    $path = sprintf('%s/%s', getcwd(), $path);
-                }
+            if (is_string($paths)) {
+                $this->handlePath($config, $output, $paths);
 
-                if (!file_exists($path)) {
-//                    TODO: throw error
-                    continue;
-                }
-
-                if (is_dir($path)) {
-                    $config->addFinder((new Finder())
-                        ->in(sprintf('%s/%s', getcwd(), $path))
-                        ->name('*.twig')
-                        ->name('*.html')
-                    );
-
-                    continue;
-                }
-
-                if (is_file($path)) {
-                    $config->addFile($path);
-                }
+                return;
             }
+
+            foreach ($paths as $path) {
+                $this->handlePath($config, $output, $path);
+            }
+        }
+    }
+
+    private function handlePath(Config $config, OutputInterface $output, string $path): void
+    {
+        if ($path[0] !== '/') {
+            $path = sprintf('%s/%s', getcwd(), $path);
+        }
+
+        if (!file_exists($path)) {
+            $output->writeln(sprintf('File at path %s is not readable or does not exist.', $path));
+
+            return;
+        }
+
+        if (is_dir($path)) {
+            $config->addFinder((new Finder())
+                ->in(sprintf('%s/%s', getcwd(), $path))
+                ->name('*.twig')
+                ->name('*.html')
+            );
+
+            return;
+        }
+
+        if (is_file($path)) {
+            $config->addFile($path);
         }
     }
 }

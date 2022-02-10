@@ -11,6 +11,15 @@ use Symfony\Component\Finder\Finder;
 
 class Config
 {
+    private const DEFAULT_RULES = [
+        'IndentFixer'        => true,
+        'PipePrefixSpacing'  => true,
+        'PipeSuffixSpacing'  => true,
+        'SelfClosingSpacing' => true,
+        'SpaceLine'          => true,
+        'TrailingSpace'      => true,
+    ];
+
     /** @var Finder[] */
     private $finders;
 
@@ -18,10 +27,13 @@ class Config
     private $files = [];
 
     /** @var array */
-    private $rules = ['base' => true];
+    private $rules = self::DEFAULT_RULES;
 
     /** @var int */
     private $indent = IndentFixer::BASE_ELEMENT_INDENT;
+
+    /** @var int */
+    private $innerIndent = IndentFixer::BASE_INNER_INDENT;
 
     /** @var bool */
     private $projectTest = false;
@@ -32,16 +44,24 @@ class Config
     /** @var AbstractMatchFixer[]|array */
     private $customMatchFixer = [];
 
-    public function __construct(array $finders, array $rules = [], ?int $indent = null)
+    public function __construct(array $finders, array $data = [])
     {
         $this->finders = $finders;
 
-        if (!empty($rules)) {
-            $this->rules = $rules;
-        }
+        foreach ($data as $propertyKey => $propertyValue) {
+            if (!is_string($propertyKey)) {
+                continue;
+            }
 
-        if ($indent !== null) {
-            $this->indent = $indent;
+            if ($propertyKey === 'rules') {
+                $this->rules = array_merge($this->rules, $propertyValue);
+
+                continue;
+            }
+
+            if (property_exists($this, $propertyKey)) {
+                $this->$propertyKey = $propertyValue;
+            }
         }
     }
 
@@ -98,6 +118,16 @@ class Config
     public function setIndent(int $indent): void
     {
         $this->indent = $indent;
+    }
+
+    public function getInnerIndent(): int
+    {
+        return $this->innerIndent;
+    }
+
+    public function setInnerIndent(int $innerIndent): void
+    {
+        $this->innerIndent = $innerIndent;
     }
 
     public function isProjectTest(): bool

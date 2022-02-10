@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer;
 
+use RuntimeException;
+
 class ConfigResolver
 {
     public const MAX_DEPTH_SEARCH = 5;
@@ -21,7 +23,12 @@ class ConfigResolver
      */
     public function resolve(string $configPath): ?Config
     {
-        $projectPath       = getcwd();
+        $projectPath = getcwd();
+
+        if ($projectPath === false) {
+            throw new RuntimeException('Could not get current working directory');
+        }
+
         $configIncludePath = sprintf('%s/%s', $projectPath, $configPath);
 
         if (file_exists($configIncludePath)) {

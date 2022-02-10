@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
 use function is_string;
+use Kellerkinder\TwigCsFixer\Config;
 use Kellerkinder\TwigCsFixer\Match;
 use Kellerkinder\TwigCsFixer\Violations\PipeSuffixSpacingViolation;
 
@@ -13,7 +14,12 @@ class PipeSuffixSpacingFixer extends AbstractMatchFixer
     public const VIOLATION_REGEX = '/\|[[:blank:]]+/';
     public const REPLACEMENT     = '|';
 
-    public function fix(Match $match): void
+    public function getRuleName(): string
+    {
+        return 'PipeSuffixSpacing';
+    }
+
+    public function fix(Config $config, Match $match): void
     {
         if (!$this->isTwigMatch($match->getMatch())) {
             return;

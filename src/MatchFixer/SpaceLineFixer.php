@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
+use Kellerkinder\TwigCsFixer\Config;
 use Kellerkinder\TwigCsFixer\Match;
 use Kellerkinder\TwigCsFixer\Violations\AbstractViolation;
 use Kellerkinder\TwigCsFixer\Violations\SpaceLineViolation;
@@ -12,12 +13,17 @@ class SpaceLineFixer extends AbstractMatchFixer
 {
     private const VIOLATION_REGEX = '/^.{0}[[:blank:]]+$/';
 
+    public function getRuleName(): string
+    {
+        return 'SpaceLine';
+    }
+
     public function supports(AbstractViolation $violation): bool
     {
         return $violation instanceof SpaceLineViolation;
     }
 
-    public function fix(Match $match): void
+    public function fix(Config $config, Match $match): void
     {
         $violationMatches = [];
         $line             = $match->getMatch();

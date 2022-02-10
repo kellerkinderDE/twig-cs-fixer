@@ -4,21 +4,24 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer\FileFixer;
 
+use Kellerkinder\TwigCsFixer\Config;
 use Kellerkinder\TwigCsFixer\File;
 use Kellerkinder\TwigCsFixer\Match;
 
 class IndentFixer extends AbstractFileFixer
 {
     public const BASE_ELEMENT_INDENT = 4;
-    public const BASE_INSIDE_INDENT  = 2;
+    public const BASE_INNER_INDENT   = 2;
 
-    public const HTML_REGEX_OPEN                = '/<[a-z]+.*>/';
-    public const HTML_REGEX_CLOSE               = '/<\/.+>/';
-    public const HTML_REGEX_SELF_CLOSE          = '/<.*\/>/';
-    public const HTML_REGEX_MULTILINE_STATEMENT = '/<[a-z]+[^>]*\R.*>/';
-    public const HTML_REGEX_MULTILINE_OPEN      = '/<[a-z]+/';
-    public const HTML_REGEX_MULTILINE_CONTENT   = '/[^<]*[^>]/';
-    public const HTML_REGEX_MULTILINE_CLOSE     = '/.*>/';
+    public const HTML_REGEX_OPEN                         = '/<[a-z]+.*>/';
+    public const HTML_REGEX_CLOSE                        = '/<\/.+>/';
+    public const HTML_REGEX_SELF_CLOSE                   = '/<.*\/>/';
+    public const HTML_REGEX_MULTILINE_STATEMENT          = '/<[a-z]+[^>]*\R.*>/';
+    public const HTML_REGEX_MULTILINE_OPEN               = '/<[a-z]+/';
+    public const HTML_REGEX_MULTILINE_CONTENT            = '/[^<]*[^>]/';
+    public const HTML_REGEX_MULTILINE_CLOSE_CONTENT      = '/.*>/';
+    public const HTML_REGEX_MULTILINE_CLOSE              = '/>/';
+    public const HTML_REGEX_MULTILINE_CLOSE_WITH_CLOSING = '/>\s?<\/[a-zA-Z]+.*>/';
 
     public const TWIG_REGEX_OPEN                  = '/{%-? .* -?%}/';
     public const TWIG_REGEX_CONTENT               = '/{{-? ?.* ?-?}}/';
@@ -28,39 +31,56 @@ class IndentFixer extends AbstractFileFixer
     public const TWIG_REGEX_CLOSE                 = '/{%-? end[a-z]+ ?.*? -?%}/';
     public const TWIG_REGEX_MULTILINE_OPEN        = '/{[%{]-?[^end]*/';
     public const TWIG_REGEX_MULTILINE_CONTENT     = '/[^{%-?]*[^-?%}]/';
-    public const TWIG_REGEX_MULTILINE_CLOSE       = '/.*-?(%})|(}})/';
+    public const TWIG_REGEX_MULTILINE_CLOSE       = '/}? ?(%})|(}})/';
     public const TWIG_REGEX_INNER_TAG_OPEN        = '/\:?\S+=[\'"]{/';
     public const TWIG_REGEX_INNER_TAG_CLOSE       = '/\s?}[\'"]/';
     public const TWIG_REGEX_INNER_TAG_SELFCLOSING = '/\:?\S+=[\'"]{.*}[\'"]/';
     public const TWIG_REGEX_INNER_FUNCTION        = '/.*: [\'"]{{ .+ }}[\'"]/';
 
-    private const LINE_TYPE_OPEN               = 1;
-    private const LINE_TYPE_CONTENT            = 2;
-    private const LINE_TYPE_CLOSE              = 3;
-    private const LINE_TYPE_OPEN_AND_CLOSE     = 4;
-    private const LINE_TYPE_SELF_CLOSING       = 5;
-    private const LINE_TYPE_MULTI_LINE_OPEN    = 6;
-    private const LINE_TYPE_MULTI_LINE_CONTENT = 7;
-    private const LINE_TYPE_MULTI_LINE_CLOSE   = 8;
-    private const LINE_TYPE_ELSE               = 9;
-    private const LINE_TYPE_TWIG_OPEN          = 10;
+    private const LINE_TYPE_OPEN                          = 1;
+    private const LINE_TYPE_CONTENT                       = 2;
+    private const LINE_TYPE_CLOSE                         = 3;
+    private const LINE_TYPE_OPEN_AND_CLOSE                = 4;
+    private const LINE_TYPE_SELF_CLOSING                  = 5;
+    private const LINE_TYPE_MULTI_LINE_OPEN               = 6;
+    private const LINE_TYPE_MULTI_LINE_CONTENT            = 7;
+    private const LINE_TYPE_MULTI_LINE_CLOSE              = 8;
+    private const LINE_TYPE_MULTI_LINE_CLOSE_WITH_CONTENT = 9;
+    private const LINE_TYPE_ELSE                          = 10;
+    private const LINE_TYPE_TWIG_OPEN                     = 11;
 
-    private const MULTI_LINE_OPEN_NONE   = 20;
-    private const MULTI_LINE_OPEN_TWIG   = 21;
-    private const MULTI_LINE_OPEN_HTML   = 22;
-    private const MULTI_LINE_OPEN_INNER  = 23;
-    private const MULTI_LINE_CLOSE_INNER = 24;
+    private const MULTI_LINE_OPEN_NONE = 20;
+    private const MULTI_LINE_OPEN_TWIG = 21;
+    private const MULTI_LINE_OPEN_HTML = 22;
+
+    private const MULTI_LINE_INNER_OPEN  = 23;
+    private const MULTI_LINE_INNER_CLOSE = 24;
+
+    private const MULTI_LINE_CLOSE_WITH_INNER = 25;
 
     /** @var int */
     protected $multiLineOpen = self::MULTI_LINE_OPEN_NONE;
 
     /** @var bool */
     protected $isMultiLine = false;
+
     /** @var bool */
     protected $isInnerMultiLine = false;
 
-    public function fix(File $file): void
+    /** @var Config */
+    private $config;
+
+    public function getRuleName(): string
     {
+        return 'IndentFixer';
+    }
+
+    public function fix(Config $config, File $file): void
+    {
+        $this->config           = $config;
+        $this->isMultiLine      = false;
+        $this->isInnerMultiLine = false;
+
         $nextIndent         = 0;
         $isScriptBlock      = false;
         $multiLineOpenMatch = null;
@@ -84,7 +104,7 @@ class IndentFixer extends AbstractFileFixer
 
             $result = trim($result);
 
-            if (empty($result)) {
+            if ($result === '') {
                 $file->setPartedLine($line->getLine(), $result);
 
                 continue;
@@ -115,10 +135,10 @@ class IndentFixer extends AbstractFileFixer
             if ($lineType === self::LINE_TYPE_ELSE) {
                 --$currentIndent;
             }
-
             $result = $this->getResult($currentIndent, $lineType, $result);
 
-            if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE) {
+            if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE
+                || $lineType === self::LINE_TYPE_MULTI_LINE_CLOSE_WITH_CONTENT) {
                 if ($this->isMultiLine && $this->hasClosingTag($line, $file->getPartedLines(), $multiLineOpenMatch)) {
                     ++$nextIndent;
                 }
@@ -127,7 +147,12 @@ class IndentFixer extends AbstractFileFixer
                 $multiLineOpenMatch = null;
             }
 
-            if ($lineType === self::MULTI_LINE_CLOSE_INNER) {
+            if ($lineType === self::MULTI_LINE_CLOSE_WITH_INNER) {
+                $this->isMultiLine = false;
+                ++$nextIndent;
+            }
+
+            if ($lineType === self::MULTI_LINE_INNER_CLOSE) {
                 $this->isInnerMultiLine = false;
             }
 
@@ -135,20 +160,14 @@ class IndentFixer extends AbstractFileFixer
         }
     }
 
-    protected function getLineType(string $match): int
+    private function getLineType(string $match): int
     {
-        if (!$this->isMultiLine && strpos($match, '/>')) {
+        if (strpos($match, '/>')) {
             return self::LINE_TYPE_SELF_CLOSING;
         }
 
-        if ($this->isMultiLine && $this->isInnerMultiLine
-            && preg_match(self::TWIG_REGEX_INNER_TAG_CLOSE, $match) === 1
-            && preg_match(self::TWIG_REGEX_INNER_TAG_SELFCLOSING, $match) !== 1
-//            && preg_match(self::TWIG_REGEX_INNER_FUNCTION, $match) !== 1 //TODO: Fixes the vuejs includes but kills the twig includes
-        ) {
-            $this->isInnerMultiLine = false;
-
-            return self::MULTI_LINE_CLOSE_INNER;
+        if ($this->isMultiLine) {
+            return $this->getMultiLineType($match);
         }
 
         if ((preg_match(self::HTML_REGEX_OPEN, $match) === 1 && preg_match(self::HTML_REGEX_CLOSE, $match) === 1)
@@ -174,36 +193,9 @@ class IndentFixer extends AbstractFileFixer
             return self::LINE_TYPE_CLOSE;
         }
 
-        if ($this->isMultiLine && $this->multiLineOpen === self::MULTI_LINE_OPEN_HTML
-            && preg_match(self::HTML_REGEX_MULTILINE_CLOSE, $match) === 1) {
-            $this->multiLineOpen = self::MULTI_LINE_OPEN_NONE;
-
-            return self::LINE_TYPE_MULTI_LINE_CLOSE;
-        }
-
-        if ($this->isMultiLine && $this->multiLineOpen === self::MULTI_LINE_OPEN_TWIG
-            && preg_match(self::TWIG_REGEX_MULTILINE_CLOSE, $match) === 1) {
-            $this->multiLineOpen = self::MULTI_LINE_OPEN_NONE;
-
-            return self::LINE_TYPE_MULTI_LINE_CLOSE;
-        }
-
-        if ($this->isMultiLine
-            && preg_match(self::TWIG_REGEX_INNER_TAG_OPEN, $match) === 1
-            && preg_match(self::TWIG_REGEX_INNER_TAG_SELFCLOSING, $match) !== 1) {
-            $this->isInnerMultiLine = true;
-
-            return self::MULTI_LINE_OPEN_INNER;
-        }
-
         if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1
             && preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) !== 1) {
-            return $this->isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
-        }
-
-        if ($this->isMultiLine && (preg_match(self::HTML_REGEX_MULTILINE_CONTENT, $match) === 1
-                || preg_match(self::TWIG_REGEX_MULTILINE_CONTENT, $match) === 1)) {
-            return self::LINE_TYPE_MULTI_LINE_CONTENT;
+            return self::LINE_TYPE_CONTENT;
         }
 
         if (preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) === 1) {
@@ -219,7 +211,67 @@ class IndentFixer extends AbstractFileFixer
             return self::LINE_TYPE_MULTI_LINE_OPEN;
         }
 
-        return $this->isMultiLine ? self::LINE_TYPE_MULTI_LINE_CONTENT : self::LINE_TYPE_CONTENT;
+        return self::LINE_TYPE_CONTENT;
+    }
+
+    private function getMultiLineType(string $match): int
+    {
+        if ($this->isInnerMultiLine
+            && preg_match(self::TWIG_REGEX_INNER_TAG_CLOSE, $match) === 1
+            && preg_match(self::TWIG_REGEX_INNER_TAG_SELFCLOSING, $match) !== 1
+            && preg_match(self::TWIG_REGEX_INNER_FUNCTION, $match) !== 1
+        ) {
+            $this->isInnerMultiLine = false;
+
+            if (preg_match(self::HTML_REGEX_MULTILINE_CLOSE_CONTENT, $match) === 1) {
+                return self::MULTI_LINE_CLOSE_WITH_INNER;
+            }
+
+            return self::MULTI_LINE_INNER_CLOSE;
+        }
+
+        if ($this->multiLineOpen === self::MULTI_LINE_OPEN_HTML
+            && preg_match(self::HTML_REGEX_MULTILINE_CLOSE, $match) === 1) {
+            $this->multiLineOpen = self::MULTI_LINE_OPEN_NONE;
+
+            if (preg_match(self::HTML_REGEX_MULTILINE_CLOSE_CONTENT, $match) === 1) {
+                if (preg_match(self::HTML_REGEX_MULTILINE_CLOSE_WITH_CLOSING, $match) === 1) {
+                    $this->isMultiLine = false;
+
+                    return self::LINE_TYPE_MULTI_LINE_CLOSE;
+                }
+
+                return self::LINE_TYPE_MULTI_LINE_CLOSE_WITH_CONTENT;
+            }
+
+            return self::LINE_TYPE_MULTI_LINE_CLOSE;
+        }
+
+        if ($this->multiLineOpen === self::MULTI_LINE_OPEN_TWIG
+            && preg_match(self::TWIG_REGEX_MULTILINE_CLOSE, $match) === 1) {
+            $this->multiLineOpen = self::MULTI_LINE_OPEN_NONE;
+
+            return self::LINE_TYPE_MULTI_LINE_CLOSE;
+        }
+
+        if (preg_match(self::TWIG_REGEX_INNER_TAG_OPEN, $match) === 1
+            && preg_match(self::TWIG_REGEX_INNER_TAG_SELFCLOSING, $match) !== 1) {
+            $this->isInnerMultiLine = true;
+
+            return self::MULTI_LINE_INNER_OPEN;
+        }
+
+        if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1
+            && preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) !== 1) {
+            return self::LINE_TYPE_MULTI_LINE_CONTENT;
+        }
+
+        if (preg_match(self::HTML_REGEX_MULTILINE_CONTENT, $match) === 1
+            || preg_match(self::TWIG_REGEX_MULTILINE_CONTENT, $match) === 1) {
+            return self::LINE_TYPE_MULTI_LINE_CONTENT;
+        }
+
+        return self::LINE_TYPE_MULTI_LINE_CONTENT;
     }
 
     private function hasClosingTag(Match $line, array $partedLines, ?Match $multiLineOpenMatch = null): bool
@@ -255,12 +307,7 @@ class IndentFixer extends AbstractFileFixer
             return false;
         }
 
-        $prefixedMatch = current($prefixedMatches);
-        $plainMatch    = $prefixedMatch;
-
-        if (is_array($prefixedMatches)) {
-            $plainMatch = end($prefixedMatches);
-        }
+        $plainMatch = end($prefixedMatches);
 
         $prefixedPlainStartMatch = sprintf('%s %s', '{%', $plainMatch);
         $prefixedPlainEndMatch   = sprintf('end%s', $plainMatch);
@@ -319,14 +366,14 @@ class IndentFixer extends AbstractFileFixer
         $multilineContentPadding = '';
 
         if ($currentIndent > 0) {
-            $basePadding = str_repeat(' ', self::BASE_ELEMENT_INDENT * $currentIndent);
+            $basePadding = str_repeat(' ', $this->config->getIndent() * $currentIndent);
         }
 
-        if ($this->isMultiLine && $lineType !== self::LINE_TYPE_MULTI_LINE_OPEN) {
-            $multilineContentPadding = str_repeat(' ', self::BASE_INSIDE_INDENT);
+        if ($this->isMultiLine && $lineType !== self::LINE_TYPE_MULTI_LINE_OPEN && $lineType !== self::LINE_TYPE_MULTI_LINE_CLOSE) {
+            $multilineContentPadding = str_repeat(' ', $this->config->getInnerIndent());
 
-            if ($this->isInnerMultiLine && $lineType !== self::MULTI_LINE_OPEN_INNER) {
-                $multilineContentPadding .= str_repeat(' ', self::BASE_INSIDE_INDENT);
+            if ($this->isInnerMultiLine && $lineType !== self::MULTI_LINE_INNER_OPEN && $lineType !== self::MULTI_LINE_INNER_CLOSE) {
+                $multilineContentPadding .= str_repeat(' ', $this->config->getInnerIndent());
             }
         }
 

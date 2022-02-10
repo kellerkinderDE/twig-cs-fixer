@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer\MatchFixer;
 
+use Kellerkinder\TwigCsFixer\Config;
 use Kellerkinder\TwigCsFixer\Match;
 use Kellerkinder\TwigCsFixer\Violations\TrailingSpaceViolation;
 
@@ -12,7 +13,12 @@ class TrailingSpaceFixer extends AbstractMatchFixer
     public const VIOLATION_REGEX = '/\S+[[:blank:]]+\Z/';
     public const FIX_REGEX       = '/\S+/';
 
-    public function fix(Match $match): void
+    public function getRuleName(): string
+    {
+        return 'TrailingSpace';
+    }
+
+    public function fix(Config $config, Match $match): void
     {
         $violationMatches = [];
         $line             = $match->getMatch();
