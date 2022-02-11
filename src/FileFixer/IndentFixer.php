@@ -32,7 +32,7 @@ class IndentFixer extends AbstractFileFixer
     public const TWIG_REGEX_MULTILINE_OPEN        = '/{[%{]-?[^end]*/';
     public const TWIG_REGEX_MULTILINE_CONTENT     = '/[^{%-?]*[^-?%}]/';
     public const TWIG_REGEX_MULTILINE_CLOSE       = '/}? ?(%})|(}})/';
-    public const TWIG_REGEX_INNER_TAG_OPEN        = '/\:?\S+=[\'"]{/';
+    public const TWIG_REGEX_INNER_TAG_OPEN        = '/\:?\S+=[\'"]{/'; // TODO: there are some inline indents which are not correctly handled (ex.: "[" and "(")
     public const TWIG_REGEX_INNER_TAG_CLOSE       = '/\s?}[\'"]/';
     public const TWIG_REGEX_INNER_TAG_SELFCLOSING = '/\:?\S+=[\'"]{.*}[\'"]/';
     public const TWIG_REGEX_INNER_FUNCTION        = '/.*: [\'"]{{ .+ }}[\'"]/';
@@ -112,49 +112,9 @@ class IndentFixer extends AbstractFileFixer
 
             $lineType = $this->getLineType($result);
 
-            if ($lineType === self::LINE_TYPE_OPEN
-                && $this->hasClosingTag($line, $file->getPartedLines())) {
-                ++$nextIndent;
-            }
-
-            if ($lineType === self::LINE_TYPE_TWIG_OPEN
-                && $this->hasClosingTag($line, $file->getPartedLines())) {
-                ++$nextIndent;
-            }
-
-            if ($lineType === self::LINE_TYPE_CLOSE) {
-                --$currentIndent;
-                --$nextIndent;
-            }
-
-            if ($lineType === self::LINE_TYPE_MULTI_LINE_OPEN) {
-                $this->isMultiLine  = true;
-                $multiLineOpenMatch = $line;
-            }
-
-            if ($lineType === self::LINE_TYPE_ELSE) {
-                --$currentIndent;
-            }
+            $this->preResultAdjustments($lineType, $line, $file, $nextIndent, $currentIndent, $multiLineOpenMatch);
             $result = $this->getResult($currentIndent, $lineType, $result);
-
-            if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE
-                || $lineType === self::LINE_TYPE_MULTI_LINE_CLOSE_WITH_CONTENT) {
-                if ($this->isMultiLine && $this->hasClosingTag($line, $file->getPartedLines(), $multiLineOpenMatch)) {
-                    ++$nextIndent;
-                }
-
-                $this->isMultiLine  = false;
-                $multiLineOpenMatch = null;
-            }
-
-            if ($lineType === self::MULTI_LINE_CLOSE_WITH_INNER) {
-                $this->isMultiLine = false;
-                ++$nextIndent;
-            }
-
-            if ($lineType === self::MULTI_LINE_INNER_CLOSE) {
-                $this->isInnerMultiLine = false;
-            }
+            $this->postResultAdjustments($lineType, $line, $file, $nextIndent, $multiLineOpenMatch);
 
             $file->setPartedLine($line->getLine(), $result);
         }
@@ -261,6 +221,18 @@ class IndentFixer extends AbstractFileFixer
             return self::MULTI_LINE_INNER_OPEN;
         }
 
+        if (preg_match(self::TWIG_REGEX_INNER_TAG_OPEN, $match) === 1
+            && preg_match(self::TWIG_REGEX_INNER_TAG_SELFCLOSING, $match) !== 1) {
+            $this->isInnerMultiLine = true;
+
+            return self::MULTI_LINE_INNER_OPEN;
+        }
+
+        if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1
+            && preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) !== 1) {
+            return self::LINE_TYPE_MULTI_LINE_CONTENT;
+        }
+
         if (preg_match(self::TWIG_REGEX_CONTENT, $match) === 1
             && preg_match(self::HTML_REGEX_MULTILINE_OPEN, $match) !== 1) {
             return self::LINE_TYPE_MULTI_LINE_CONTENT;
@@ -283,9 +255,9 @@ class IndentFixer extends AbstractFileFixer
             return false;
         }
 
-        if (preg_match('/<.*>?/', $trimmedMatch) > 0) {
+        if (preg_match('/<[a-zA-Z0-9]+.*>?/', $trimmedMatch) > 0) {
             $endPattern      = self::HTML_REGEX_CLOSE;
-            $pregPrefixFound = preg_match('/<([a-zA-Z0-9]+).*>/', $trimmedMatch, $prefixedMatches);
+            $pregPrefixFound = preg_match('/<([a-zA-Z0-9]+).*>?/', $trimmedMatch, $prefixedMatches);
 
             if ($pregPrefixFound !== 1 && $multiLineOpenMatch !== null) {
                 $pregPrefixFound = preg_match('/<([a-zA-Z0-9]+)/', $trimmedMatch, $prefixedMatches);
@@ -307,12 +279,11 @@ class IndentFixer extends AbstractFileFixer
             return false;
         }
 
-        $plainMatch = end($prefixedMatches);
-
+        $plainMatch              = end($prefixedMatches);
         $prefixedPlainStartMatch = sprintf('%s %s', '{%', $plainMatch);
         $prefixedPlainEndMatch   = sprintf('end%s', $plainMatch);
 
-        if (preg_match('/<.*>?/', $trimmedMatch) > 0) {
+        if (preg_match('/<[a-zA-Z0-9]+.*>?/', $trimmedMatch) > 0) {
             $prefixedPlainStartMatch = sprintf('%s%s', '<', $plainMatch);
             $prefixedPlainEndMatch   = sprintf('%s%s', '/', $plainMatch);
         }
@@ -391,5 +362,65 @@ class IndentFixer extends AbstractFileFixer
         }
 
         return false;
+    }
+
+    private function preResultAdjustments(
+        int $lineType,
+        Match $line,
+        File $file,
+        int &$nextIndent,
+        int &$currentIndent,
+        ?Match &$multiLineOpenMatch
+    ): void {
+        if ($lineType === self::LINE_TYPE_OPEN
+            && $this->hasClosingTag($line, $file->getPartedLines())) {
+            ++$nextIndent;
+        }
+
+        if ($lineType === self::LINE_TYPE_TWIG_OPEN
+            && $this->hasClosingTag($line, $file->getPartedLines())) {
+            ++$nextIndent;
+        }
+
+        if ($lineType === self::LINE_TYPE_CLOSE) {
+            --$currentIndent;
+            --$nextIndent;
+        }
+
+        if ($lineType === self::LINE_TYPE_MULTI_LINE_OPEN) {
+            $this->isMultiLine  = true;
+            $multiLineOpenMatch = $line;
+        }
+
+        if ($lineType === self::LINE_TYPE_ELSE) {
+            --$currentIndent;
+        }
+    }
+
+    private function postResultAdjustments(
+        int $lineType,
+        Match $line,
+        File $file,
+        int &$nextIndent,
+        ?Match &$multiLineOpenMatch
+    ): void {
+        if ($lineType === self::LINE_TYPE_MULTI_LINE_CLOSE
+            || $lineType === self::LINE_TYPE_MULTI_LINE_CLOSE_WITH_CONTENT) {
+            if ($this->isMultiLine && $this->hasClosingTag($line, $file->getPartedLines(), $multiLineOpenMatch)) {
+                ++$nextIndent;
+            }
+
+            $this->isMultiLine  = false;
+            $multiLineOpenMatch = null;
+        }
+
+        if ($lineType === self::MULTI_LINE_CLOSE_WITH_INNER) {
+            $this->isMultiLine = false;
+            ++$nextIndent;
+        }
+
+        if ($lineType === self::MULTI_LINE_INNER_CLOSE) {
+            $this->isInnerMultiLine = false;
+        }
     }
 }
