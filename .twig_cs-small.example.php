@@ -12,10 +12,4 @@ $finder = Finder::create()
     ->name('*.twig')
     ->name('*.html');
 
-return new Config([$finder], [
-    'indent' => '3',
-    'innerIndent' => '3',
-    'rules' => [
-        ''
-    ]
-]);
+return new Config([$finder]);
