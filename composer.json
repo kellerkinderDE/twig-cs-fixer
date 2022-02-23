@@ -1,9 +1,19 @@
 {
-    "name": "kellerkinder/twig-cs-fixer",
-    "description": "TODO",
+    "name": "k10r/twig-cs-fixer",
+    "description": "Composer package to fix twig codestyle",
     "type": "project",
     "license": "MIT",
+    "keywords": [
+        "twig",
+        "fixer",
+        "twig-cs-fixer",
+        "k10r"
+    ],
     "authors": [
+        {
+            "name": "Kellerkinder GmbH",
+            "email": "anfragen@kellerkinder.de"
+        },
         {
             "name": "a.wink",
             "email": "a.wink@kellerkinder.de"
@@ -12,8 +22,8 @@
     "require": {
         "php": "^7.3",
         "friendsoftwig/twigcs": "^5.0",
-        "symfony/dependency-injection": "^5.2",
-        "symfony/config": "^5.2"
+        "symfony/dependency-injection": "^4 | ^5",
+        "symfony/config": "^4 | ^5"
     },
     "require-dev": {
         "symfony/var-dumper": "^5.2",
@@ -28,5 +38,8 @@
     "scripts": {
         "phpcs": "./vendor/bin/php-cs-fixer fix",
         "phpstan": "./vendor/bin/phpstan analyse"
-    }
+    },
+    "bin": [
+        "bin/twig-cs-fixer"
+    ]
 }
