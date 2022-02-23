@@ -13,11 +13,11 @@
 | Your idea |  |
 
 ## Setup
-1. Go to your project folder and execute `composer require k10r/twig-cs-fixer`
+1. Go to your project folder and execute `composer require k10r/twig-cs-fixer --dev`
 2. Create a file named `.twig_cs` `.twig_cs.dist` or `.twig_cs.dist.php`
     * Fill this file with the [small example content](/.twig_cs-small.example.php) or the [enhanced example content](/.twig_cs-enhanced.example.php)
 3. (Optional) Adjust the executed fixers according to your needs
-4. Execute the fixer via `vendor/bin/twig-cs-fixer fix`
+4. Execute the fixer via `vendor/bin/twig-cs-fixer`
 
 
 ## Known issues
