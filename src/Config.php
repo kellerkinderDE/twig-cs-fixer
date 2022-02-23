@@ -11,6 +11,8 @@ use Symfony\Component\Finder\Finder;
 
 class Config
 {
+    public const DEFAULT_FILE_NAMES = ['.twig_cs', '.twig_cs.dist', '.twig_cs.dist.php'];
+
     private const DEFAULT_RULES = [
         'IndentFixer'        => true,
         'PipePrefixSpacing'  => true,

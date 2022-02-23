@@ -23,7 +23,11 @@ class ConfigResolver
      */
     public function resolve(string $configPath): ?Config
     {
-        $projectPath = getcwd();
+        $projectPath = '';
+
+        if ($configPath[0] !== DIRECTORY_SEPARATOR) {
+            $projectPath = getcwd();
+        }
 
         if ($projectPath === false) {
             throw new RuntimeException('Could not get current working directory');

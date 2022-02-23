@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Kellerkinder\TwigCsFixer\Command;
 
+use Composer\Autoload\ClassLoader;
 use function count;
 use Kellerkinder\TwigCsFixer\Config;
 use Kellerkinder\TwigCsFixer\ConfigResolver;
@@ -11,6 +12,7 @@ use Kellerkinder\TwigCsFixer\File;
 use Kellerkinder\TwigCsFixer\FileFixer\AbstractFileFixer;
 use Kellerkinder\TwigCsFixer\MatchFixer\AbstractMatchFixer;
 use Kellerkinder\TwigCsFixer\Parser;
+use ReflectionClass;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
@@ -45,20 +47,16 @@ class FixCommand extends Command
         $this
             ->setName('fix')
             ->addArgument('paths', InputArgument::IS_ARRAY | InputArgument::OPTIONAL, 'The paths to scan for twig files.')
-            ->addOption('config', 'c', InputOption::VALUE_OPTIONAL, 'The path to the config file.', '');
+            ->addOption('config', 'c', InputOption::VALUE_OPTIONAL, 'The path to the config file.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $config     = null;
-        $configPath = $input->getOption('config');
-
-        if (is_string($configPath)) {
-            $config = $this->configResolver->resolve($configPath);
-        }
+        $config = $this->resolveConfig($input->getOption('config'));
 
         if ($config === null) {
-//            TODO: implement handling
+            $output->writeln('The configuration file could not be found. Please fill the config parameter');
+
             return 1;
         }
 
@@ -218,6 +216,44 @@ class FixCommand extends Command
                 $this->handlePath($config, $output, $path);
             }
         }
+    }
+
+    private function resolveConfig(?string $configPath, ?bool $isFallback = null): ?Config
+    {
+        dump($configPath);
+
+        if (is_string($configPath)) {
+            $config = $this->configResolver->resolve($configPath);
+
+            if ($config !== null) {
+                return $config;
+            }
+
+            if ($isFallback) {
+                return null;
+            }
+        }
+
+        foreach (Config::DEFAULT_FILE_NAMES as $fileName) {
+            $config = $this->resolveConfig(sprintf('%s/%s', getcwd(), $fileName), true);
+
+            if ($config !== null) {
+                return $config;
+            }
+        }
+
+        $reflection = new ReflectionClass(ClassLoader::class);
+        $vendorDir  = dirname(dirname($reflection->getFileName()));
+
+        foreach (Config::DEFAULT_FILE_NAMES as $fileName) {
+            $config = $this->resolveConfig(sprintf('%s/../%s', $vendorDir, $fileName), true);
+
+            if ($config !== null) {
+                return $config;
+            }
+        }
+
+        return null;
     }
 
     private function handlePath(Config $config, OutputInterface $output, string $path): void
