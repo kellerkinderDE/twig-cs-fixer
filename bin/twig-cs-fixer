@@ -15,7 +15,6 @@ $possibleFiles = [
 $targetFile    = null;
 
 foreach ($possibleFiles as $possibleFile) {
-    echo $possibleFile . PHP_EOL;
     if (file_exists($possibleFile)) {
         $targetFile = $possibleFile;
 
