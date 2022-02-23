@@ -21,9 +21,10 @@
     ],
     "require": {
         "php": "^7.3",
-        "friendsoftwig/twigcs": "^5.0",
         "symfony/dependency-injection": "^4 | ^5",
-        "symfony/config": "^4 | ^5"
+        "symfony/config": "^4 | ^5",
+        "symfony/console": "^4 | ^5",
+        "symfony/finder": "^4 | ^5"
     },
     "require-dev": {
         "symfony/var-dumper": "^5.2",
