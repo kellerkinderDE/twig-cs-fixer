@@ -52,7 +52,9 @@ class FixCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $config = $this->resolveConfig($input->getOption('config'));
+        /** @var null|string $configPath */
+        $configPath = $input->getOption('config');
+        $config     = $this->resolveConfig($configPath);
 
         if ($config === null) {
             $output->writeln('The configuration file could not be found. Please fill the config parameter');
@@ -220,8 +222,6 @@ class FixCommand extends Command
 
     private function resolveConfig(?string $configPath, ?bool $isFallback = null): ?Config
     {
-        dump($configPath);
-
         if (is_string($configPath)) {
             $config = $this->configResolver->resolve($configPath);
 
@@ -242,8 +242,14 @@ class FixCommand extends Command
             }
         }
 
-        $reflection = new ReflectionClass(ClassLoader::class);
-        $vendorDir  = dirname(dirname($reflection->getFileName()));
+        $reflection         = new ReflectionClass(ClassLoader::class);
+        $reflectionFileName = $reflection->getFileName();
+
+        if ($reflectionFileName === false) {
+            return null;
+        }
+
+        $vendorDir = dirname($reflectionFileName, 2);
 
         foreach (Config::DEFAULT_FILE_NAMES as $fileName) {
             $config = $this->resolveConfig(sprintf('%s/../%s', $vendorDir, $fileName), true);

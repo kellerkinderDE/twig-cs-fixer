@@ -41,7 +41,9 @@ class Application extends BaseApplication
             $this->add($fixCommand);
             $this->setDefaultCommand($commandName, $singleCommand);
         } catch (Throwable $t) {
-            dd($t);
+            echo $t->getMessage();
+
+            die();
         }
     }
 
@@ -54,7 +56,9 @@ class Application extends BaseApplication
             $loader->load('DependencyInjection/services.xml');
             $containerBuilder->compile();
         } catch (Throwable $t) {
-            dd($t);
+            echo $t->getMessage();
+
+            die();
         }
 
         $this->container = $containerBuilder;

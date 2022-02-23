@@ -11,10 +11,10 @@ abstract class AbstractFileFixer
 {
     abstract public function fix(Config $config, File $file): void;
 
-    abstract public function getRuleName(): string;
+    abstract public static function getRuleName(): string;
 
     public function isActive(array $rules): bool
     {
-        return in_array($this->getRuleName(), $rules);
+        return in_array(static::getRuleName(), $rules);
     }
 }

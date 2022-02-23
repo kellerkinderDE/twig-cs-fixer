@@ -70,7 +70,7 @@ class IndentFixer extends AbstractFileFixer
     /** @var Config */
     private $config;
 
-    public function getRuleName(): string
+    public static function getRuleName(): string
     {
         return 'IndentFixer';
     }

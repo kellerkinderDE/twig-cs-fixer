@@ -14,7 +14,7 @@ class PipeSuffixSpacingFixer extends AbstractMatchFixer
     public const VIOLATION_REGEX = '/\|[[:blank:]]+/';
     public const REPLACEMENT     = '|';
 
-    public function getRuleName(): string
+    public static function getRuleName(): string
     {
         return 'PipeSuffixSpacing';
     }

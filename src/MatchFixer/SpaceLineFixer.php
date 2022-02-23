@@ -13,7 +13,7 @@ class SpaceLineFixer extends AbstractMatchFixer
 {
     private const VIOLATION_REGEX = '/^.{0}[[:blank:]]+$/';
 
-    public function getRuleName(): string
+    public static function getRuleName(): string
     {
         return 'SpaceLine';
     }

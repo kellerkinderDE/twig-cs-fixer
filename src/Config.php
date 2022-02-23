@@ -7,20 +7,16 @@ namespace Kellerkinder\TwigCsFixer;
 use Kellerkinder\TwigCsFixer\FileFixer\AbstractFileFixer;
 use Kellerkinder\TwigCsFixer\FileFixer\IndentFixer;
 use Kellerkinder\TwigCsFixer\MatchFixer\AbstractMatchFixer;
+use Kellerkinder\TwigCsFixer\MatchFixer\PipePrefixSpacingFixer;
+use Kellerkinder\TwigCsFixer\MatchFixer\PipeSuffixSpacingFixer;
+use Kellerkinder\TwigCsFixer\MatchFixer\SelfClosingSpacingFixer;
+use Kellerkinder\TwigCsFixer\MatchFixer\SpaceLineFixer;
+use Kellerkinder\TwigCsFixer\MatchFixer\TrailingSpaceFixer;
 use Symfony\Component\Finder\Finder;
 
 class Config
 {
     public const DEFAULT_FILE_NAMES = ['.twig_cs', '.twig_cs.dist', '.twig_cs.dist.php'];
-
-    private const DEFAULT_RULES = [
-        'IndentFixer'        => true,
-        'PipePrefixSpacing'  => true,
-        'PipeSuffixSpacing'  => true,
-        'SelfClosingSpacing' => true,
-        'SpaceLine'          => true,
-        'TrailingSpace'      => true,
-    ];
 
     /** @var Finder[] */
     private $finders;
@@ -29,7 +25,7 @@ class Config
     private $files = [];
 
     /** @var array */
-    private $rules = self::DEFAULT_RULES;
+    private $rules;
 
     /** @var int */
     private $indent = IndentFixer::BASE_ELEMENT_INDENT;
@@ -48,6 +44,7 @@ class Config
 
     public function __construct(array $finders, array $data = [])
     {
+        $this->rules   = static::getDefaultRules();
         $this->finders = $finders;
 
         foreach ($data as $propertyKey => $propertyValue) {
@@ -65,6 +62,18 @@ class Config
                 $this->$propertyKey = $propertyValue;
             }
         }
+    }
+
+    public static function getDefaultRules(): array
+    {
+        return [
+            IndentFixer::getRuleName()             => true,
+            PipePrefixSpacingFixer::getRuleName()  => true,
+            PipeSuffixSpacingFixer::getRuleName()  => true,
+            SelfClosingSpacingFixer::getRuleName() => true,
+            SpaceLineFixer::getRuleName()          => true,
+            TrailingSpaceFixer::getRuleName()      => true,
+        ];
     }
 
     public function getFinders(): array

@@ -13,7 +13,7 @@ class TrailingSpaceFixer extends AbstractMatchFixer
     public const VIOLATION_REGEX = '/\S+[[:blank:]]+\Z/';
     public const FIX_REGEX       = '/\S+/';
 
-    public function getRuleName(): string
+    public static function getRuleName(): string
     {
         return 'TrailingSpace';
     }
