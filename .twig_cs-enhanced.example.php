@@ -19,8 +19,8 @@ $finder = Finder::create()
     ->name('*.html');
 
 return new Config([$finder], [
-    'indent' => '7',
-    'innerIndent' => '3',
+    'indent' => 7,
+    'innerIndent' => 3,
     'rules' => [
         IndentFixer::getRuleName() => false,
         PipePrefixSpacingFixer::getRuleName() => true,
